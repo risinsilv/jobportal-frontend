@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -30,6 +30,8 @@ import {
   ListItemAvatar,
   ListItemText,
   ListItemSecondaryAction,
+  CircularProgress,
+  LinearProgress,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -55,6 +57,7 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import instance from '../../Service/AxiosOrder'; // Add this import
 
 // Styled components with glassmorphism
 const CandidatesContainer = styled(Box)(({ theme }) => ({
@@ -156,133 +159,126 @@ const Candidate = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
   const [selectedApplicationId, setSelectedApplicationId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [applications, setApplications] = useState([]);
+  const [employerJobs, setEmployerJobs] = useState([]);
 
-  // Mock data - Employer's posted jobs
-  const employerJobs = [
-    { 
-      id: 1, 
-      title: 'Senior React Developer', 
-      location: 'Remote', 
-      postedDate: '2024-12-15',
-      status: 'Active',
-      applicationsCount: 3,
-      salary: '$80,000 - $120,000',
-      description: 'We are looking for an experienced React developer...'
-    },
-    { 
-      id: 2, 
-      title: 'Backend Engineer', 
-      location: 'New York, NY', 
-      postedDate: '2024-12-10',
-      status: 'Active',
-      applicationsCount: 1,
-      salary: '$90,000 - $130,000',
-      description: 'Join our backend team to build scalable systems...'
-    },
-    { 
-      id: 3, 
-      title: 'Full Stack Developer', 
-      location: 'San Francisco, CA', 
-      postedDate: '2024-12-08',
-      status: 'Active',
-      applicationsCount: 1,
-      salary: '$85,000 - $125,000',
-      description: 'Looking for a versatile full stack developer...'
-    },
-    { 
-      id: 4, 
-      title: 'DevOps Engineer', 
-      location: 'Austin, TX', 
-      postedDate: '2024-12-05',
-      status: 'Closed',
-      applicationsCount: 0,
-      salary: '$95,000 - $140,000',
-      description: 'Seeking a DevOps engineer to manage our infrastructure...'
-    },
-  ];
+  // Get employer ID from localStorage
+  const employerId = localStorage.getItem('user');
 
-  const applications = [
-    {
-      applicationId: 1,
-      job: { id: 1, title: 'Senior React Developer', location: 'Remote' },
-      jobSeeker: {
-        id: 101,
-        name: 'Sarah Johnson',
-        email: 'sarah.j@email.com',
-        phone: '+1 (555) 123-4567',
-        avatar: 'https://via.placeholder.com/60',
-        experience: '5 years',
-        skills: ['React', 'JavaScript', 'Node.js', 'TypeScript'],
-        location: 'Boston, MA'
-      },
-      status: 'Applied',
-      appliedAt: '2024-12-20T10:30:00',
-    },
-    {
-      applicationId: 2,
-      job: { id: 1, title: 'Senior React Developer', location: 'Remote' },
-      jobSeeker: {
-        id: 102,
-        name: 'Michael Chen',
-        email: 'michael.chen@email.com',
-        phone: '+1 (555) 987-6543',
-        avatar: 'https://via.placeholder.com/60',
-        experience: '7 years',
-        skills: ['React', 'Vue.js', 'Python', 'AWS'],
-        location: 'Seattle, WA'
-      },
-      status: 'Shortlisted',
-      appliedAt: '2024-12-19T14:15:00',
-    },
-    {
-      applicationId: 3,
-      job: { id: 2, title: 'Backend Engineer', location: 'New York, NY' },
-      jobSeeker: {
-        id: 103,
-        name: 'Emily Rodriguez',
-        email: 'emily.r@email.com',
-        phone: '+1 (555) 456-7890',
-        avatar: 'https://via.placeholder.com/60',
-        experience: '4 years',
-        skills: ['Java', 'Spring Boot', 'PostgreSQL', 'Docker'],
-        location: 'New York, NY'
-      },
-      status: 'Applied',
-      appliedAt: '2024-12-18T09:45:00',
-    },
-    {
-      applicationId: 4,
-      job: { id: 1, title: 'Senior React Developer', location: 'Remote' },
-      jobSeeker: {
-        id: 104,
-        name: 'David Kumar',
-        email: 'david.k@email.com',
-        phone: '+1 (555) 321-0987',
-        avatar: 'https://via.placeholder.com/60',
-        experience: '6 years',
-        skills: ['React', 'Angular', 'MongoDB', 'Express'],
-        location: 'Austin, TX'
-      },
-      status: 'Hired',
-      appliedAt: '2024-12-17T16:20:00',
-    },
-    {
-      applicationId: 5,
-      job: { id: 3, title: 'Full Stack Developer', location: 'San Francisco, CA' },
-      jobSeeker: {
-        id: 105,
-        name: 'Lisa Wang',
-        email: 'lisa.wang@email.com',
-        phone: '+1 (555) 654-3210',
-        avatar: 'https://via.placeholder.com/60',
-        experience: '3 years',
-        skills: ['JavaScript', 'Python', 'React', 'Django'],
-        location: 'San Francisco, CA'
-      },
-      status: 'Rejected',
-      appliedAt: '2024-12-16T11:30:00',
-    },
-  ];
+  useEffect(() => {
+    if (employerId) {
+      fetchApplicationsByEmployer();
+    }
+  }, [employerId]);
+
+  const fetchApplicationsByEmployer = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch applications for this employer
+      const response = await instance.get(`/api/applications/by-employer/${employerId}`);
+      const apps = response.data; // Array of ApplicationsDto: { applicationId, jobId, jobSeekerId, status }
+
+      // Fetch job and job seeker details for each application
+      const enrichedApplications = await Promise.all(
+        apps.map(async (app) => {
+          try {
+            // Fetch job details
+            const jobResponse = await instance.get(`/api/jobpostings/${app.jobId}`);
+            const job = jobResponse.data;
+
+            // Fetch job seeker details
+            const jobSeekerResponse = await instance.get(`/api/jobseekers/${app.jobSeekerId}`);
+            const jobSeeker = jobSeekerResponse.data;
+
+            // Fetch user details for the job seeker (for name, email, etc.)
+            let userData = {};
+            try {
+              const userResponse = await instance.get(`/api/users/${jobSeeker.userId}`);
+              userData = userResponse.data;
+            } catch (userError) {
+              console.log('Could not fetch user data for job seeker:', app.jobSeekerId);
+            }
+
+            return {
+              applicationId: app.applicationId,
+              status: app.status,
+              appliedAt: new Date().toISOString(), // You might want to add this to your DTO
+              job: {
+                id: job.id,
+                title: job.title,
+                location: job.location,
+                description: job.description,
+                salary: job.salary,
+                employmentType: job.employmentType,
+                postedDate: job.createdAt,
+                status: job.status || 'Active'
+              },
+              jobSeeker: {
+                id: jobSeeker.id,
+                name: userData.name || 'Job Seeker',
+                email: userData.email,
+                phone: userData.phone,
+                avatar: userData.profilePic ? `/api/users/images/${userData.profilePic}` : null,
+                title: jobSeeker.title,
+                profileSummary: jobSeeker.profileSummary,
+                skills: jobSeeker.skills ? jobSeeker.skills.split(',').map(s => s.trim()) : [],
+                experience: jobSeeker.experience,
+                location: jobSeeker.address || userData.location,
+                education: jobSeeker.education,
+                certifications: jobSeeker.certifications
+              }
+            };
+          } catch (error) {
+            console.error('Error fetching details for application:', app.applicationId, error);
+            // Return basic application data if detailed fetch fails
+            return {
+              applicationId: app.applicationId,
+              status: app.status,
+              appliedAt: new Date().toISOString(),
+              job: {
+                id: app.jobId,
+                title: 'Job Title Not Available',
+                location: 'Location Not Available',
+                description: '',
+                salary: '',
+                status: 'Active'
+              },
+              jobSeeker: {
+                id: app.jobSeekerId,
+                name: 'Job Seeker',
+                email: '',
+                phone: '',
+                skills: [],
+                location: ''
+              }
+            };
+          }
+        })
+      );
+
+      setApplications(enrichedApplications);
+
+      // Extract unique jobs from applications
+      const uniqueJobs = enrichedApplications.reduce((jobs, app) => {
+        const existingJob = jobs.find(job => job.id === app.job.id);
+        if (!existingJob) {
+          jobs.push({
+            ...app.job,
+            applicationsCount: enrichedApplications.filter(a => a.job.id === app.job.id).length
+          });
+        }
+        return jobs;
+      }, []);
+
+      setEmployerJobs(uniqueJobs);
+
+    } catch (error) {
+      console.error('Failed to fetch applications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter applications based on selected job and filters
   const filteredApplications = applications.filter(app => {
@@ -362,9 +358,26 @@ const Candidate = () => {
     setSelectedApplicationId(null);
   };
 
-  const handleStatusChange = (newStatus) => {
-    console.log(`Changing status of application ${selectedApplicationId} to ${newStatus}`);
-    // Here you would make an API call to update the status
+  const handleStatusChange = async (newStatus) => {
+    try {
+      // Update the application status via API
+      await instance.put(`/api/applications/${selectedApplicationId}`, {
+        status: newStatus
+      });
+
+      // Update local state
+      setApplications(prevApps => 
+        prevApps.map(app => 
+          app.applicationId === selectedApplicationId 
+            ? { ...app, status: newStatus }
+            : app
+        )
+      );
+
+      console.log(`Application ${selectedApplicationId} status changed to ${newStatus}`);
+    } catch (error) {
+      console.error('Failed to update application status:', error);
+    }
     handleStatusMenuClose();
   };
 
@@ -436,6 +449,19 @@ const Candidate = () => {
             </Typography>
           </Box>
         </CandidatesHeader>
+
+        {/* Loading indicator */}
+        {isLoading && (
+          <LinearProgress 
+            sx={{ 
+              mb: 3,
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: '#2c67f2'
+              }
+            }} 
+          />
+        )}
 
         {/* Statistics Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -637,19 +663,6 @@ const Candidate = () => {
                           }}
                           onClick={() => handleJobClick(job)}
                         >
-                          <ListItemAvatar>
-                            <Avatar
-                              sx={{ 
-                                width: 60, 
-                                height: 60, 
-                                backgroundColor: job.status === 'Active' ? '#4caf50' : '#f44336',
-                                color: 'white'
-                              }}
-                            >
-                              <Work />
-                            </Avatar>
-                          </ListItemAvatar>
-                          
                           <ListItemText
                             primary={
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>

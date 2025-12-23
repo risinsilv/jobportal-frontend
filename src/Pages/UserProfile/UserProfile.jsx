@@ -139,6 +139,11 @@ const UserProfile = () => {
     companyAddress: '',
     contactInfo: '',
     position: '',
+    // Trainer-specific fields
+    bio: '',
+    specialization: '',
+    company: '',
+    certifications: '',
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -153,6 +158,8 @@ const UserProfile = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [hasEmployerProfile, setHasEmployerProfile] = useState(false);
   const [showEmployerProfileCreation, setShowEmployerProfileCreation] = useState(false);
+  const [hasTrainerProfile, setHasTrainerProfile] = useState(false);
+  const [showTrainerProfileCreation, setShowTrainerProfileCreation] = useState(false);
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -180,6 +187,11 @@ const UserProfile = () => {
             companyAddress: userData.companyAddress || '',
             contactInfo: userData.contactInfo || '',
             position: userData.position || '',
+            // Trainer-specific fields (will be empty for non-trainers)
+            bio: userData.bio || '',
+            specialization: userData.specialization || '',
+            company: userData.company || '',
+            certifications: userData.certifications || '',
           };
 
           // If user is an Employer, fetch additional Employer data
@@ -204,6 +216,30 @@ const UserProfile = () => {
               console.log('Employer profile not found or error fetching:', employerError);
               // This is expected for new Employers who haven't created their profile yet
               setHasEmployerProfile(false);
+            }
+          }
+
+          // If user is a Trainer, fetch additional Trainer data
+          if ((userData.role || userRole) === 'Trainer') {
+            try {
+              const trainerResponse = await instance.get(`/api/trainers/${userId}`);
+              const trainerData = trainerResponse.data;
+              console.log('Trainer data received:', trainerData);
+              
+              // Merge Trainer-specific data
+              profileDataToSet = {
+                ...profileDataToSet,
+                bio: trainerData.bio || '',
+                specialization: trainerData.specialization || '',
+                company: trainerData.company || '',
+                certifications: trainerData.certifications || '',
+              };
+              
+              setHasTrainerProfile(true);
+            } catch (trainerError) {
+              console.log('Trainer profile not found or error fetching:', trainerError);
+              // This is expected for new Trainers who haven't created their profile yet
+              setHasTrainerProfile(false);
             }
           }
 
@@ -374,6 +410,31 @@ const UserProfile = () => {
         }
       }
 
+      // Handle Trainer profile update (only if trainer profile exists)
+      if (profileData.role === 'Trainer' && hasTrainerProfile) {
+        const trainerData = {
+          bio: profileData.bio,
+          specialization: profileData.specialization,
+          company: profileData.company,
+          certifications: profileData.certifications,
+        };
+
+        try {
+          console.log('Updating existing Trainer profile:', trainerData);
+          await instance.put(`/api/trainers/${userId}`, trainerData);
+          console.log('Trainer profile updated successfully');
+        } catch (updateError) {
+          console.error('Error updating Trainer profile:', updateError);
+          setSnackbar({
+            open: true,
+            message: 'Failed to update Trainer profile',
+            severity: 'error'
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       setIsEditing(false);
       setSelectedFile(null);
       
@@ -453,6 +514,7 @@ const UserProfile = () => {
     setIsEditing(false);
     setSelectedFile(null);
     setShowEmployerProfileCreation(false);
+    setShowTrainerProfileCreation(false);
     // Reset preview to original if it was changed
     if (profileData.profilePic) {
       setProfilePreview(`/api/images/${profileData.profilePic}`);
@@ -479,6 +541,11 @@ const UserProfile = () => {
             companyAddress: userData.companyAddress || '',
             contactInfo: userData.contactInfo || '',
             position: userData.position || '',
+            // Trainer-specific fields
+            bio: userData.bio || '',
+            specialization: userData.specialization || '',
+            company: userData.company || '',
+            certifications: userData.certifications || '',
           };              // If user is an Employer, fetch Employer data
               if (userData.role === 'Employer') {
                 try {
@@ -498,6 +565,27 @@ const UserProfile = () => {
                 } catch (employerError) {
                   console.log('Employer profile not found:', employerError);
                   setHasEmployerProfile(false);
+                }
+              }
+
+              // If user is a Trainer, fetch Trainer data
+              if (userData.role === 'Trainer') {
+                try {
+                  const trainerResponse = await instance.get(`/api/trainers/${userId}`);
+                  const trainerData = trainerResponse.data;
+                  
+                  profileDataToSet = {
+                    ...profileDataToSet,
+                    bio: trainerData.bio || '',
+                    specialization: trainerData.specialization || '',
+                    company: trainerData.company || '',
+                    certifications: trainerData.certifications || '',
+                  };
+                  
+                  setHasTrainerProfile(true);
+                } catch (trainerError) {
+                  console.log('Trainer profile not found:', trainerError);
+                  setHasTrainerProfile(false);
                 }
               }
 
@@ -588,6 +676,74 @@ const UserProfile = () => {
       companyAddress: '',
       contactInfo: '',
       position: '',
+    }));
+  };
+
+  const handleCreateTrainerProfile = () => {
+    setShowTrainerProfileCreation(true);
+    // Don't set isEditing to true - we only want to enable trainer fields
+  };
+
+  const handleSaveTrainerProfile = async (e) => {
+    e.preventDefault();
+    
+    // Validate trainer profile fields
+    if (!profileData.bio || !profileData.specialization) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields (Bio and Specialization)',
+        severity: 'error'
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const userId = localStorage.getItem('user');
+      
+      const trainerData = {
+        userId: parseInt(userId),
+        bio: profileData.bio,
+        specialization: profileData.specialization,
+        company: profileData.company,
+        certifications: profileData.certifications,
+      };
+
+      console.log('Creating new Trainer profile:', trainerData);
+      await instance.post('/api/trainers', trainerData);
+      console.log('Trainer profile created successfully');
+      
+      setHasTrainerProfile(true);
+      setShowTrainerProfileCreation(false);
+      
+      setSnackbar({
+        open: true,
+        message: 'Trainer profile created successfully!',
+        severity: 'success'
+      });
+    } catch (createError) {
+      console.error('Error creating Trainer profile:', createError);
+      setSnackbar({
+        open: true,
+        message: 'Failed to create Trainer profile',
+        severity: 'error'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelTrainerProfile = () => {
+    setShowTrainerProfileCreation(false);
+    // Don't set isEditing to false - maintain current editing state
+    // Reset trainer fields
+    setProfileData(prev => ({
+      ...prev,
+      bio: '',
+      specialization: '',
+      company: '',
+      certifications: '',
     }));
   };
 
@@ -884,6 +1040,139 @@ const UserProfile = () => {
                 </>
               )}
 
+              {/* Trainer-specific fields */}
+              {profileData.role === 'Trainer' && (
+                <>
+                  {!hasTrainerProfile && !showTrainerProfileCreation ? (
+                    <Grid item xs={12}>
+                      <Card sx={{ 
+                        mt: 2, 
+                        border: '2px dashed #2c67f2', 
+                        backgroundColor: 'rgba(44, 103, 242, 0.02)',
+                        borderRadius: 2 
+                      }}>
+                        <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                          <Typography variant="h6" sx={{ mb: 2, color: '#2c67f2', fontWeight: 600 }}>
+                            Complete Your Trainer Profile
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+                            Enhance your profile to attract more clients and showcase your expertise
+                          </Typography>
+                          <GradientButton
+                            onClick={handleCreateTrainerProfile}
+                            variant="contained"
+                            sx={{ px: 4 }}
+                          >
+                            Create Trainer Profile
+                          </GradientButton>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ) : (
+                    <>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c67f2' }}>
+                            Trainer Information
+                          </Typography>
+                          {hasTrainerProfile && (
+                            <Typography variant="body2" sx={{ 
+                              color: 'success.main', 
+                              fontWeight: 500,
+                              backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                              padding: '4px 12px',
+                              borderRadius: '16px',
+                              fontSize: '0.75rem'
+                            }}>
+                              Profile Complete
+                            </Typography>
+                          )}
+                        </Box>
+                        <Divider sx={{ mb: 2 }} />
+                      </Grid>
+
+                      
+                        <StyledTextField
+                          fullWidth
+                          id="bio"
+                          label="Short Bio"
+                          name="bio"
+                          value={profileData.bio}
+                          onChange={handleInputChange}
+                          disabled={!isEditing && !showTrainerProfileCreation}
+                          multiline
+                          rows={3}
+                          placeholder="Tell us about yourself"
+                          required
+                        />
+                      
+
+                     
+                        <StyledTextField
+                          fullWidth
+                          id="specialization"
+                          label="Specialization"
+                          name="specialization"
+                          value={profileData.specialization}
+                          onChange={handleInputChange}
+                          disabled={!isEditing && !showTrainerProfileCreation}
+                          placeholder="e.g., Yoga, Personal Training, Nutrition"
+                          required
+                        />
+                    
+
+                      
+                        <StyledTextField
+                          fullWidth
+                          id="certifications"
+                          label="Certifications"
+                          name="certifications"
+                          multiline
+                          value={profileData.certifications}
+                          onChange={handleInputChange}
+                          disabled={!isEditing && !showTrainerProfileCreation}
+                          placeholder="List your relevant certifications"
+                        />
+                     
+
+                      
+                        <StyledTextField
+                          fullWidth
+                          id="company"
+                          label="Company (if any)"
+                          name="company"
+                          value={profileData.company}
+                          onChange={handleInputChange}
+                          disabled={!isEditing && !showTrainerProfileCreation}
+                          placeholder="Your affiliated company or organization"
+                        />
+                      
+
+                      {showTrainerProfileCreation && (
+                        <Grid item xs={12}>
+                          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2 }}>
+                            <Button
+                              variant="outlined"
+                              onClick={handleCancelTrainerProfile}
+                              sx={{ color: '#2c67f2', borderColor: '#2c67f2' }}
+                            >
+                              Cancel
+                            </Button>
+                            <GradientButton
+                              onClick={handleSaveTrainerProfile}
+                              disabled={isLoading || !profileData.bio || !profileData.specialization}
+                              startIcon={<Save />}
+                            >
+                              {isLoading ? 'Creating...' : 'Create Profile'}
+                            </GradientButton>
+                          </Box>
+                        </Grid>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
               {/* Change Password Button */}
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -983,6 +1272,28 @@ const UserProfile = () => {
                     {profileData.position || 'Not specified'}
                   </Typography>
                 </Grid>
+              </>
+            )}
+            {profileData.role === 'Trainer' && profileData.specialization && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Specialization
+                  </Typography>
+                  <Typography variant="body1" fontWeight={500}>
+                    {profileData.specialization}
+                  </Typography>
+                </Grid>
+                {profileData.company && (
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Company/Organization
+                    </Typography>
+                    <Typography variant="body1" fontWeight={500}>
+                      {profileData.company}
+                    </Typography>
+                  </Grid>
+                )}
               </>
             )}
           </Grid>

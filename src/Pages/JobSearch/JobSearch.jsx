@@ -181,39 +181,13 @@ const JobSearch = () => {
 
   // Fetch jobs from API
   useEffect(() => {
-    const fetchAppliedJobs = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const jobSeekerId = localStorage.getItem('jobSeekerId') || localStorage.getItem('userId');
-        
-        if (token && jobSeekerId) {
-          const response = await instance.get(`/api/applications/jobseeker/${jobSeekerId}`);
-          const appliedJobIds = response.data.map(app => app.jobId);
-          setAppliedJobs(new Set(appliedJobIds));
-        }
-      } catch (error) {
-        console.log('Failed to fetch applied jobs:', error);
-        // Don't show error to user as this is not critical
-      }
-    };
-
     const fetchJobs = async () => {
       try {
         setIsLoading(true);
         setError('');
-        
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('Authentication required. Please login again.');
-          return;
-        }
 
         console.log('Fetching jobs from API...');
-        const response = await instance.get('/api/jobpostings', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+        const response = await instance.get('/api/jobpostings');
 
         console.log('Jobs fetched successfully:', response.data);
         
@@ -270,7 +244,6 @@ const JobSearch = () => {
       }
     };
 
-    fetchAppliedJobs();
     fetchJobs();
   }, []);
 
@@ -304,7 +277,7 @@ const JobSearch = () => {
       setIsApplying(true);
       
       // Get jobSeekerId from localStorage (assuming it's stored there after login)
-      const jobSeekerId = localStorage.getItem('jobSeekerId') || localStorage.getItem('userId');
+      const jobSeekerId = localStorage.getItem('user');
       
       if (!jobSeekerId) {
         setSnackbar({
@@ -318,17 +291,14 @@ const JobSearch = () => {
       // Create application data according to ApplicationsDto
       const applicationData = {
         jobSeekerId: parseInt(jobSeekerId),
-        jobId: parseInt(jobId)
+        jobId: parseInt(jobId),
+        status: 'Applied' // Assuming status is required, set it to 'APPLIED'
       };
 
       console.log('Submitting application:', applicationData);
 
       // POST to the applications endpoint
-      const response = await instance.post('/api/applications', applicationData, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await instance.post('/api/applications', applicationData);
 
       console.log('Application submitted successfully:', response.data);
 

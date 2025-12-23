@@ -8,9 +8,16 @@ import PostJob from "../Pages/PostJob/PostJob";
 import Candidate from "../Pages/Candidate/Candidate";
 import CreateCourses from "../Pages/CreateCourses/CreateCourses";
 import CourseEnrollments from "../Pages/CourseEnrollments/CourseEnrollements";
+import MyCourses from "../Pages/MyCourses/MyCourses";
+import Home from "../Pages/Home/Home";
 import { element } from "prop-types";
 
 const route = [
+    {
+        name:'Home',
+        path:'/Home',
+        element:<Home/>
+    },
     {
         name: 'JobSearch',
         path:'/JobSearch',
@@ -58,6 +65,11 @@ const route = [
         name: 'CourseEnrollments',
         path:'/CourseEnrollments',
         element:<CourseEnrollments/>
+    },
+    {
+        name: 'MyCourses',
+        path:'/MyCourses',
+        element:<MyCourses/>
     }
 
 

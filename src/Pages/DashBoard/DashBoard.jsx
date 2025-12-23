@@ -49,9 +49,11 @@ import {
   Description,
   PostAdd,
   PersonAdd,
+  Book,
+  Assignment,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { Route, Routes, useNavigate } from 'react-router-dom';
+import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 
 // Styled components
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -103,7 +105,9 @@ const Dashboard = () => {
   const [userName, setUserName] = useState('');
   const [avatarError, setAvatarError] = useState(false);
   const [userDataLoading, setUserDataLoading] = useState(true);
+  const [userRole, setUserRole] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Handle avatar image load error
   const handleAvatarError = () => {
@@ -117,9 +121,14 @@ const Dashboard = () => {
       try {
         const userId = localStorage.getItem('user');
         const storedName = localStorage.getItem('name');
-        
+        const storedRole = localStorage.getItem('role');
+        console.log('Use effect check');
         if (storedName) {
           setUserName(storedName);
+        }
+        
+        if (storedRole) {
+          setUserRole(storedRole);
         }
         
         if (userId) {
@@ -255,6 +264,17 @@ const Dashboard = () => {
     // Add your navigation logic here for viewing course enrollments
   };
 
+  const handleMyCoursesClick = () => {
+    console.log('Navigating to My Courses...');
+    navigate('/MyCourses');
+    // Add your navigation logic here for viewing enrolled courses
+  };
+
+  const handleHomeClick = () => {
+    console.log('Navigating to Home...');
+    navigate('/Home');
+  };
+
   // Quick Action handlers
   const handleSearchJobsClick = () => {
     navigate('/JobSearch');
@@ -271,73 +291,327 @@ const Dashboard = () => {
     handleQuickActionClose();
   };
 
+  // Function to get role-specific stats
+  const getRoleSpecificStats = () => {
+    const role = userRole || localStorage.getItem('role');
+    
+    switch (role) {
+      case 'JobSeeker':
+        return [
+          {
+            title: 'Total Jobs',
+            icon: <Work sx={{ fontSize: 40, color: '#2c67f2' }} />,
+            color: '#e3f2fd',
+            onClick: handleJobsClick,
+          },
+          {
+            title: 'Active Applications',
+            icon: <People sx={{ fontSize: 40, color: '#4caf50' }} />,
+            color: '#e8f5e8',
+            onClick: handleApplicationsClick,
+          },
+          {
+            title: 'Training Programs',
+            icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
+            color: '#f3e5f5',
+            onClick: handleTrainingClick,
+          },
+          {
+            title: 'My Resume',
+            icon: <Description sx={{ fontSize: 40, color: '#ff9800' }} />,
+            color: '#fff3e0',
+            onClick: handleResumeClick,
+          },
+          {
+            title: 'My Courses',
+            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
+            color: '#e0f2f1',
+            onClick: handleMyCoursesClick,
+          },
+        ];
+      
+      case 'Employer':
+        return [
+          {
+            title: 'Create Job Opening',
+            icon: <PostAdd sx={{ fontSize: 40, color: '#e91e63' }} />,
+            color: '#fce4ec',
+            onClick: handleJobCreationClick,
+          },
+          {
+            title: 'Candidates',
+            icon: <People sx={{ fontSize: 40, color: '#00bcd4' }} />,
+            color: '#e0f2f1',
+            onClick: handleCandidatesClick,
+          },
+          {
+            title: 'My Job Postings',
+            icon: <Work sx={{ fontSize: 40, color: '#2c67f2' }} />,
+            color: '#e3f2fd',
+            onClick: handleJobsClick,
+          },
+          {
+            title: 'Training Programs',
+            icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
+            color: '#f3e5f5',
+            onClick: handleTrainingClick,
+          },
+          {
+            title: 'My Courses',
+            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
+            color: '#e0f2f1',
+            onClick: handleMyCoursesClick,
+          },
+        ];
+      
+      case 'Trainer':
+        return [
+          {
+            title: 'Create Courses',
+            icon: <Add sx={{ fontSize: 40, color: '#795548' }} />,
+            color: '#efebe9',
+            onClick: handleCreateCoursesClick,
+          },
+          {
+            title: 'Course Enrollments',
+            icon: <PersonAdd sx={{ fontSize: 40, color: '#673ab7' }} />,
+            color: '#f3e5f5',
+            onClick: handleCourseEnrollmentsClick,
+          },
+          {
+            title: 'Training Programs',
+            icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
+            color: '#f3e5f5',
+            onClick: handleTrainingClick,
+          },
+          {
+            title: 'My Courses',
+            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
+            color: '#e0f2f1',
+            onClick: handleMyCoursesClick,
+          },
+        ];
+      
+      default:
+        // Default stats for unknown roles or during loading
+        return [
+          {
+            title: 'Total Jobs',
+            icon: <Work sx={{ fontSize: 40, color: '#2c67f2' }} />,
+            color: '#e3f2fd',
+            onClick: handleJobsClick,
+          },
+          {
+            title: 'Active Applications',
+            icon: <People sx={{ fontSize: 40, color: '#4caf50' }} />,
+            color: '#e8f5e8',
+            onClick: handleApplicationsClick,
+          },
+          {
+            title: 'Training Programs',
+            icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
+            color: '#f3e5f5',
+            onClick: handleTrainingClick,
+          },
+          {
+            title: 'My Courses',
+            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
+            color: '#e0f2f1',
+            onClick: handleMyCoursesClick,
+          },
+        ];
+    }
+  };
+
+  // Function to get role-specific quick actions for menu
+  const getRoleSpecificQuickActions = () => {
+    const role = userRole || localStorage.getItem('role');
+    
+    switch (role) {
+      case 'JobSeeker':
+        return [
+          { 
+            title: 'Total Jobs', 
+            subtitle: 'Browse available jobs', 
+            icon: <Work fontSize="small" />,
+            onClick: () => { handleJobsClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(44, 103, 242, 0.1)',
+            activeColor: '#2c67f2'
+          },
+          { 
+            title: 'Active Applications', 
+            subtitle: 'Track your applications', 
+            icon: <People fontSize="small" />,
+            onClick: () => { handleApplicationsClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(76, 175, 80, 0.1)',
+            activeColor: '#4caf50'
+          },
+          { 
+            title: 'Training Programs', 
+            subtitle: 'Explore courses', 
+            icon: <School fontSize="small" />,
+            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(156, 39, 176, 0.1)',
+            activeColor: '#9c27b0'
+          },
+          { 
+            title: 'My Resume', 
+            subtitle: 'Update profile', 
+            icon: <Description fontSize="small" />,
+            onClick: () => { handleResumeClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(255, 152, 0, 0.1)',
+            activeColor: '#ff9800'
+          },
+          { 
+            title: 'My Courses', 
+            subtitle: 'View enrolled courses', 
+            icon: <Book fontSize="small" />,
+            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(0, 150, 136, 0.1)',
+            activeColor: '#009688'
+          }
+        ];
+      case 'Employer':
+        return [
+          { 
+            title: 'Create Job Opening', 
+            subtitle: 'Post a new job', 
+            icon: <PostAdd fontSize="small" />,
+            onClick: () => { handleJobCreationClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(233, 30, 99, 0.1)',
+            activeColor: '#e91e63'
+          },
+          { 
+            title: 'Candidates', 
+            subtitle: 'Manage applicants', 
+            icon: <People fontSize="small" />,
+            onClick: () => { handleCandidatesClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(0, 188, 212, 0.1)',
+            activeColor: '#00bcd4'
+          },
+          { 
+            title: 'My Job Postings', 
+            subtitle: 'View your job posts', 
+            icon: <Work fontSize="small" />,
+            onClick: () => { handleJobsClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(44, 103, 242, 0.1)',
+            activeColor: '#2c67f2'
+          },
+          { 
+            title: 'Training Programs', 
+            subtitle: 'Explore courses', 
+            icon: <School fontSize="small" />,
+            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(156, 39, 176, 0.1)',
+            activeColor: '#9c27b0'
+          },
+          { 
+            title: 'My Courses', 
+            subtitle: 'View enrolled courses', 
+            icon: <Book fontSize="small" />,
+            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(0, 150, 136, 0.1)',
+            activeColor: '#009688'
+          }
+        ];
+      case 'Trainer':
+        return [
+          { 
+            title: 'Create Courses', 
+            subtitle: 'Add new training course', 
+            icon: <Add fontSize="small" />,
+            onClick: () => { handleCreateCoursesClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(121, 85, 72, 0.1)',
+            activeColor: '#795548'
+          },
+          { 
+            title: 'Course Enrollments', 
+            subtitle: 'View student enrollments', 
+            icon: <PersonAdd fontSize="small" />,
+            onClick: () => { handleCourseEnrollmentsClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(103, 58, 183, 0.1)',
+            activeColor: '#673ab7'
+          },
+          { 
+            title: 'Training Programs', 
+            subtitle: 'Explore courses', 
+            icon: <School fontSize="small" />,
+            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(156, 39, 176, 0.1)',
+            activeColor: '#9c27b0'
+          },
+          { 
+            title: 'My Courses', 
+            subtitle: 'View enrolled courses', 
+            icon: <Book fontSize="small" />,
+            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(0, 150, 136, 0.1)',
+            activeColor: '#009688'
+          }
+        ];
+      default:
+        return [
+          { 
+            title: 'Total Jobs', 
+            subtitle: 'Browse available jobs', 
+            icon: <Work fontSize="small" />,
+            onClick: () => { handleJobsClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(44, 103, 242, 0.1)',
+            activeColor: '#2c67f2'
+          },
+          { 
+            title: 'Active Applications', 
+            subtitle: 'Track your applications', 
+            icon: <People fontSize="small" />,
+            onClick: () => { handleApplicationsClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(76, 175, 80, 0.1)',
+            activeColor: '#4caf50'
+          },
+          { 
+            title: 'Training Programs', 
+            subtitle: 'Explore courses', 
+            icon: <School fontSize="small" />,
+            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(156, 39, 176, 0.1)',
+            activeColor: '#9c27b0'
+          },
+          { 
+            title: 'My Courses', 
+            subtitle: 'View enrolled courses', 
+            icon: <Book fontSize="small" />,
+            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
+            hoverColor: 'rgba(0, 150, 136, 0.1)',
+            activeColor: '#009688'
+          }
+        ];
+    }
+  };
+
   // Sample data for dashboard
-  const stats = [
-    {
-      title: 'Total Jobs',
-      value: '1,234',
-      change: '+12%',
-      icon: <Work sx={{ fontSize: 40, color: '#2c67f2' }} />,
-      color: '#e3f2fd',
-      onClick: handleJobsClick, // Function for this stat
-    },
-    {
-      title: 'Active Applications',
-      value: '89',
-      change: '+5%',
-      icon: <People sx={{ fontSize: 40, color: '#4caf50' }} />,
-      color: '#e8f5e8',
-      onClick: handleApplicationsClick, // Function for this stat
-    },
-    {
-      title: 'Training Programs',
-      value: '67',
-      change: '+15%',
-      icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
-      color: '#f3e5f5',
-      onClick: handleTrainingClick, // Function for this stat
-    },
-    {
-      title: 'My Resume',
-      value: 'Updated',
-      change: 'Today',
-      icon: <Description sx={{ fontSize: 40, color: '#ff9800' }} />,
-      color: '#fff3e0',
-      onClick: handleResumeClick, // Function for this stat
-    },
-    {
-      title: 'Create Job Opening',
-      value: 'Post Job',
-      change: 'Quick Action',
-      icon: <PostAdd sx={{ fontSize: 40, color: '#e91e63' }} />,
-      color: '#fce4ec',
-      onClick: handleJobCreationClick, // Function for this stat
-    },
-    {
-      title: 'Candidates',
-      value: '156',
-      change: '+8%',
-      icon: <People sx={{ fontSize: 40, color: '#00bcd4' }} />,
-      color: '#e0f2f1',
-      onClick: handleCandidatesClick, // Function for this stat
-    },
-    {
-      title: 'Create Courses',
-      value: 'Add Course',
-      change: 'For Trainers',
-      icon: <Add sx={{ fontSize: 40, color: '#795548' }} />,
-      color: '#efebe9',
-      onClick: handleCreateCoursesClick, // Function for this stat
-    },
-    {
-      title: 'Course Enrollments',
-      value: '234',
-      change: '+18%',
-      icon: <PersonAdd sx={{ fontSize: 40, color: '#673ab7' }} />,
-      color: '#f3e5f5',
-      onClick: handleCourseEnrollmentsClick, // Function for this stat
-    },
-  ];
+  const stats = getRoleSpecificStats();
+
+  // Check if we're on the main dashboard path (empty view)
+  const isMainDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+
+  // Auto-navigate to Home when on main dashboard
+  useEffect(() => {
+    if (isMainDashboard) {
+      navigate('/Home');
+    }
+  }, [isMainDashboard, navigate]);
+
+  // Function to render dashboard content or empty view
+  const renderDashboardContent = () => {
+    // Return routes for all paths
+    return (
+      <Routes>
+        {route.map((val, index) =>
+
+          <Route key={index} path={val.path} element={val.element}></Route>
+        )}
+      </Routes>
+    );
+  };
 
 
 
@@ -407,15 +681,6 @@ const Dashboard = () => {
             >
               Quick Action
             </GradientButton>
-
-            <IconButton
-              color="inherit"
-              onClick={handleNotificationOpen}
-            >
-              <Badge badgeContent={2} color="error">
-                <Notifications />
-              </Badge>
-            </IconButton>
 
             <IconButton
               onClick={handleProfileMenuOpen}
@@ -596,231 +861,39 @@ const Dashboard = () => {
             Access key features quickly
           </Typography>
         </Box>
-        
-        {/* Stats Cards as Quick Actions */}
-        <Box sx={{ px: 2, mb: 2 }}>
-          <Grid container spacing={1.5}>
-            <Grid item xs={6}>
-              <Card 
-                onClick={() => { handleJobsClick(); handleQuickActionClose(); }}
-                sx={{ 
-                  cursor: 'pointer',
-                  p: 1.5,
-                  borderRadius: 1.5,
-                  background: 'rgba(44, 103, 242, 0.1)',
-                  border: '1px solid rgba(44, 103, 242, 0.2)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    background: 'rgba(44, 103, 242, 0.15)',
-                    transform: 'translateY(-1px)',
-                  }
-                }}
-              >
-                <Box sx={{ textAlign: 'center' }}>
-                  <Work sx={{ fontSize: 24, color: '#2c67f2', mb: 0.5 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    1,234
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Total Jobs
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-            <Grid item xs={6}>
-              <Card 
-                onClick={() => { handleApplicationsClick(); handleQuickActionClose(); }}
-                sx={{ 
-                  cursor: 'pointer',
-                  p: 1.5,
-                  borderRadius: 1.5,
-                  background: 'rgba(76, 175, 80, 0.1)',
-                  border: '1px solid rgba(76, 175, 80, 0.2)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    background: 'rgba(76, 175, 80, 0.15)',
-                    transform: 'translateY(-1px)',
-                  }
-                }}
-              >
-                <Box sx={{ textAlign: 'center' }}>
-                  <People sx={{ fontSize: 24, color: '#4caf50', mb: 0.5 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    89
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Applications
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-            <Grid item xs={6}>
-              <Card 
-                onClick={() => { handleTrainingClick(); handleQuickActionClose(); }}
-                sx={{ 
-                  cursor: 'pointer',
-                  p: 1.5,
-                  borderRadius: 1.5,
-                  background: 'rgba(156, 39, 176, 0.1)',
-                  border: '1px solid rgba(156, 39, 176, 0.2)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    background: 'rgba(156, 39, 176, 0.15)',
-                    transform: 'translateY(-1px)',
-                  }
-                }}
-              >
-                <Box sx={{ textAlign: 'center' }}>
-                  <School sx={{ fontSize: 24, color: '#9c27b0', mb: 0.5 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    67
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Training
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-            <Grid item xs={6}>
-              <Card 
-                onClick={() => { handleResumeClick(); handleQuickActionClose(); }}
-                sx={{ 
-                  cursor: 'pointer',
-                  p: 1.5,
-                  borderRadius: 1.5,
-                  background: 'rgba(255, 152, 0, 0.1)',
-                  border: '1px solid rgba(255, 152, 0, 0.2)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    background: 'rgba(255, 152, 0, 0.15)',
-                    transform: 'translateY(-1px)',
-                  }
-                }}
-              >
-                <Box sx={{ textAlign: 'center' }}>
-                  <Description sx={{ fontSize: 24, color: '#ff9800', mb: 0.5 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Updated
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Resume
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
-          </Grid>
-        </Box>
 
         <Divider sx={{ mx: 2, my: 1 }} />
 
         {/* Additional Quick Actions */}
-        <MenuItem 
-          onClick={() => { handleJobCreationClick(); handleQuickActionClose(); }}
-          sx={{
-            py: 1.5,
-            px: 2,
-            mx: 1,
-            borderRadius: 1,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              background: 'rgba(233, 30, 99, 0.1)',
-              color: '#e91e63',
-            }
-          }}
-        >
-          <ListItemIcon sx={{ color: 'inherit' }}>
-            <PostAdd fontSize="small" />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Create Job Opening" 
-            secondary="Post a new job"
-            primaryTypographyProps={{
-              fontWeight: 500,
-              fontSize: '0.95rem'
+        {getRoleSpecificQuickActions().map((action, index) => (
+          <MenuItem 
+            key={index}
+            onClick={action.onClick}
+            sx={{
+              py: 1.5,
+              px: 2,
+              mx: 1,
+              borderRadius: 1,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: action.hoverColor,
+                color: action.activeColor,
+              }
             }}
-          />
-        </MenuItem>
-        
-        <MenuItem 
-          onClick={() => { handleCandidatesClick(); handleQuickActionClose(); }}
-          sx={{
-            py: 1.5,
-            px: 2,
-            mx: 1,
-            borderRadius: 1,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              background: 'rgba(0, 188, 212, 0.1)',
-              color: '#00bcd4',
-            }
-          }}
-        >
-          <ListItemIcon sx={{ color: 'inherit' }}>
-            <People fontSize="small" />
-          </ListItemIcon>
-          <ListItemText 
-            primary="View Candidates" 
-            secondary="Manage applicants"
-            primaryTypographyProps={{
-              fontWeight: 500,
-              fontSize: '0.95rem'
-            }}
-          />
-        </MenuItem>
-
-        <MenuItem 
-          onClick={() => { handleCreateCoursesClick(); handleQuickActionClose(); }}
-          sx={{
-            py: 1.5,
-            px: 2,
-            mx: 1,
-            borderRadius: 1,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              background: 'rgba(121, 85, 72, 0.1)',
-              color: '#795548',
-            }
-          }}
-        >
-          <ListItemIcon sx={{ color: 'inherit' }}>
-            <Add fontSize="small" />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Create Courses" 
-            secondary="Add new training course"
-            primaryTypographyProps={{
-              fontWeight: 500,
-              fontSize: '0.95rem'
-            }}
-          />
-        </MenuItem>
-
-        <MenuItem 
-          onClick={() => { handleCourseEnrollmentsClick(); handleQuickActionClose(); }}
-          sx={{
-            py: 1.5,
-            px: 2,
-            mx: 1,
-            borderRadius: 1,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              background: 'rgba(103, 58, 183, 0.1)',
-              color: '#673ab7',
-            }
-          }}
-        >
-          <ListItemIcon sx={{ color: 'inherit' }}>
-            <PersonAdd fontSize="small" />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Course Enrollments" 
-            secondary="View student enrollments"
-            primaryTypographyProps={{
-              fontWeight: 500,
-              fontSize: '0.95rem'
-            }}
-          />
-        </MenuItem>
+          >
+            <ListItemIcon sx={{ color: 'inherit' }}>
+              {action.icon}
+            </ListItemIcon>
+            <ListItemText 
+              primary={action.title}
+              secondary={action.subtitle}
+              primaryTypographyProps={{
+                fontWeight: 500,
+                fontSize: '0.95rem'
+              }}
+            />
+          </MenuItem>
+        ))}
       </Menu>
 
       {/* Logout Confirmation Dialog */}
@@ -892,37 +965,38 @@ const Dashboard = () => {
                   }}
                 >
                   <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography color="text.secondary" gutterBottom variant="overline">
-                          {stat.title}
-                        </Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                          {stat.value}
-                        </Typography>
-                        <Chip
-                          label={stat.change}
-                          size="small"
-                          sx={{
-                            backgroundColor: '#e8f5e8',
-                            color: '#4caf50',
-                            fontWeight: 600,
-                          }}
-                        />
-                      </Box>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      py: 2
+                    }}>
                       <Box
                         sx={{
-                          width: 80,
-                          height: 80,
+                          width: 60,
+                          height: 60,
                           borderRadius: 2,
                           backgroundColor: stat.color,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          mb: 2,
                         }}
                       >
                         {stat.icon}
                       </Box>
+                      <Typography 
+                        variant="subtitle1" 
+                        sx={{ 
+                          fontWeight: 600, 
+                          color: 'text.primary',
+                          lineHeight: 1.2
+                        }}
+                      >
+                        {stat.title}
+                      </Typography>
                     </Box>
                   </CardContent>
                 </StatsCard>
@@ -1036,11 +1110,8 @@ const Dashboard = () => {
               </StatsCard>
             </Grid> */}
           </Grid>
-          <Routes>
-            {route.map((val, index) =>
-              <Route key={index} path={val.path} element={val.element}></Route>
-            )}
-          </Routes>
+          {/* Render Dashboard Content or Routes */}
+          {renderDashboardContent()}
         </Container>
       </DashboardContainer>
     </Box>

@@ -18,6 +18,7 @@ import {
     Chip,
     IconButton,
     InputAdornment,
+    CircularProgress,
 } from '@mui/material';
 import {
     ArrowBack,
@@ -31,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import instance from '../../Service/AxiosOrder';
 
 // Styled components with glassmorphism effect
 const CreateCoursesContainer = styled(Box)(({ theme }) => ({
@@ -148,6 +150,7 @@ const CreateCourses = () => {
         videoUrl: '',
     });
     const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: '',
@@ -173,6 +176,63 @@ const CreateCourses = () => {
         'Software Testing',
         'Other',
     ];
+
+    React.useEffect(() => {
+        const userRole = localStorage.getItem('role');
+        if (userRole !== 'Trainer') {
+            setSnackbar({
+                open: true,
+                message: 'Only trainers can create courses.',
+                severity: 'error',
+            });
+            // Redirect to dashboard after showing error
+            setTimeout(() => {
+                navigate('/dashboard');
+            }, 3000);
+        }
+    }, [navigate]);
+
+    const checkTrainerProfile = async () => {
+        try {
+            const userId = localStorage.getItem('user');
+            const response = await instance.get(`/api/trainers/${userId}`);
+            return response.data;
+        } catch (error) {
+            console.log('Trainer profile not found:', error);
+            return null;
+        }
+    };
+
+    const fetchTrainerCourses = async () => {
+        try {
+            const trainerId = localStorage.getItem('user');
+            const response = await instance.get(`/api/courses/trainer/${trainerId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching trainer courses:', error);
+            return [];
+        }
+    };
+
+    const updateCourse = async (courseId, courseData) => {
+        try {
+            const response = await instance.put(`/api/courses/${courseId}`, courseData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating course:', error);
+            throw error;
+        }
+    };
+
+    const deleteCourse = async (courseId) => {
+        try {
+            await instance.delete(`/api/courses/${courseId}`);
+            return true;
+        } catch (error) {
+            console.error('Error deleting course:', error);
+            throw error;
+        }
+    };
 
     const handleInputChange = (field) => (event) => {
         setFormData({
@@ -241,7 +301,7 @@ const CreateCourses = () => {
         }
     };
 
-    const handleSubmit = (isDraft = false) => {
+    const handleSubmit = async (isDraft = false) => {
         if (!validateForm() && !isDraft) {
             setSnackbar({
                 open: true,
@@ -251,29 +311,84 @@ const CreateCourses = () => {
             return;
         }
 
-        // Here you would typically send the data to your backend
-        console.log('Course data:', {
-            ...formData,
-            trainerId: localStorage.getItem('userId'), // Assuming trainer ID is stored
-            isDraft,
-            createdAt: new Date().toISOString(),
-        });
+        setIsLoading(true);
 
-        setSnackbar({
-            open: true,
-            message: isDraft ? 'Course saved as draft!' : 'Course created successfully!',
-            severity: 'success',
-        });
+        try {
+            // Get trainer ID from localStorage
+            const trainerId = localStorage.getItem('user');
+            
+            if (!trainerId) {
+                setSnackbar({
+                    open: true,
+                    message: 'User not authenticated. Please log in again.',
+                    severity: 'error',
+                });
+                setIsLoading(false);
+                return;
+            }
 
-        // Reset form after successful submission
-        if (!isDraft) {
-            setFormData({
-                title: '',
-                category: '',
-                description: '',
-                cost: '',
-                videoUrl: '',
+            // Prepare the course data according to CoursesDto structure
+            const courseData = {
+                trainerId: parseInt(trainerId),
+                title: formData.title.trim(),
+                description: formData.description.trim(),
+                cost: formData.cost.trim(),
+                videoUrl: formData.videoUrl.trim() || null,
+                category: formData.category, // Adding category even though it's not in DTO (backend might need it)
+            };
+
+            console.log('Submitting course data:', courseData);
+
+            // Make API call to create course
+            const response = await instance.post('/api/courses', courseData);
+            
+            console.log('Course created successfully:', response.data);
+
+            setSnackbar({
+                open: true,
+                message: isDraft ? 'Course saved as draft!' : 'Course created successfully!',
+                severity: 'success',
             });
+
+            // Reset form after successful submission
+            if (!isDraft) {
+                setFormData({
+                    title: '',
+                    category: '',
+                    description: '',
+                    cost: '',
+                    videoUrl: '',
+                });
+                setErrors({});
+            }
+
+            // Navigate back to dashboard after a short delay
+            setTimeout(() => {
+                navigate('/dashboard');
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error creating course:', error);
+            
+            let errorMessage = 'Failed to create course. Please try again.';
+            
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.status === 401) {
+                errorMessage = 'Unauthorized. Please log in again.';
+            } else if (error.response?.status === 403) {
+                errorMessage = 'You do not have permission to create courses.';
+            } else if (error.response?.status === 500) {
+                errorMessage = 'Server error. Please try again later.';
+            }
+
+            setSnackbar({
+                open: true,
+                message: errorMessage,
+                severity: 'error',
+            });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -452,10 +567,11 @@ const CreateCourses = () => {
 
                                     <GradientButton
                                         onClick={() => handleSubmit(false)}
-                                        startIcon={<School />}
+                                        startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <School />}
                                         size="large"
+                                        disabled={isLoading}
                                     >
-                                        Create Course
+                                        {isLoading ? 'Creating Course...' : 'Create Course'}
                                     </GradientButton>
                                 </Box>
                             </Grid>

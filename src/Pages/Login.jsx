@@ -156,7 +156,7 @@ const Login = () => {
       
       setSuccess('Login successful! Redirecting...');
       setOpenSnackbar(true);
-      // window.location.reload();
+      window.location.reload();
       
 
     })

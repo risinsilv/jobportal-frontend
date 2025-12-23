@@ -17,6 +17,8 @@ import {
   CardMedia,
   LinearProgress,
   Rating,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Search,
@@ -31,9 +33,11 @@ import {
   School,
   Star,
   StarBorder,
+  Refresh,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import instance from '../../Service/AxiosOrder';
 
 // Styled components with glassmorphism
 const CoursesContainer = styled(Box)(({ theme }) => ({
@@ -162,135 +166,217 @@ const TrainingCourses = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isLoading, setIsLoading] = useState(false);
   const [bookmarkedCourses, setBookmarkedCourses] = useState(new Set());
+  const [courses, setCourses] = useState([]);
+  const [error, setError] = useState(null);
+  const [enrolledCourses, setEnrolledCourses] = useState(new Set());
+  const [enrollmentLoading, setEnrollmentLoading] = useState(new Set());
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Course categories for filtering
-  const categories = ['All', 'Programming', 'Design', 'Business', 'Marketing', 'Data Science'];
-
-  // Sample course data based on the Courses entity
-  const [courses, setCourses] = useState([
-    {
-      courseId: 1,
-      title: 'Complete React Development Course',
-      description: 'Master React from basics to advanced concepts including hooks, context, and state management. Build real-world projects and learn industry best practices.',
-      cost: '$99.99',
-      videoUrl: 'https://example.com/react-course',
-      trainer: {
-        userId: 101,
-        name: 'John Smith',
-        profilePic: 'https://via.placeholder.com/50/4f46e5/FFFFFF?text=JS',
-      },
-      category: 'Programming',
-      duration: '40 hours',
-      rating: 4.8,
-      studentsEnrolled: 1250,
-      createdAt: '2024-12-15T10:30:00',
-      thumbnail: 'https://via.placeholder.com/400x225/4f46e5/FFFFFF?text=React+Course',
-    },
-    {
-      courseId: 2,
-      title: 'UI/UX Design Fundamentals',
-      description: 'Learn the principles of user interface and user experience design. Create stunning designs using Figma and Adobe XD.',
-      cost: '$79.99',
-      videoUrl: 'https://example.com/uiux-course',
-      trainer: {
-        userId: 102,
-        name: 'Sarah Johnson',
-        profilePic: 'https://via.placeholder.com/50/ec4899/FFFFFF?text=SJ',
-      },
-      category: 'Design',
-      duration: '25 hours',
-      rating: 4.6,
-      studentsEnrolled: 890,
-      createdAt: '2024-12-20T14:15:00',
-      thumbnail: 'https://via.placeholder.com/400x225/ec4899/FFFFFF?text=UI+UX+Design',
-    },
-    {
-      courseId: 3,
-      title: 'Digital Marketing Masterclass',
-      description: 'Comprehensive guide to digital marketing including SEO, social media marketing, email campaigns, and analytics.',
-      cost: '$129.99',
-      videoUrl: 'https://example.com/marketing-course',
-      trainer: {
-        userId: 103,
-        name: 'Mike Chen',
-        profilePic: 'https://via.placeholder.com/50/10b981/FFFFFF?text=MC',
-      },
-      category: 'Marketing',
-      duration: '35 hours',
-      rating: 4.9,
-      studentsEnrolled: 2100,
-      createdAt: '2024-12-10T09:45:00',
-      thumbnail: 'https://via.placeholder.com/400x225/10b981/FFFFFF?text=Digital+Marketing',
-    },
-    {
-      courseId: 4,
-      title: 'Python for Data Science',
-      description: 'Learn Python programming for data analysis, visualization, and machine learning. Includes pandas, numpy, and scikit-learn.',
-      cost: '$149.99',
-      videoUrl: 'https://example.com/python-course',
-      trainer: {
-        userId: 104,
-        name: 'Dr. Lisa Wang',
-        profilePic: 'https://via.placeholder.com/50/f59e0b/FFFFFF?text=LW',
-      },
-      category: 'Data Science',
-      duration: '50 hours',
-      rating: 4.7,
-      studentsEnrolled: 1650,
-      createdAt: '2024-12-25T11:20:00',
-      thumbnail: 'https://via.placeholder.com/400x225/f59e0b/FFFFFF?text=Python+Data+Science',
-    },
-    {
-      courseId: 5,
-      title: 'Business Strategy & Leadership',
-      description: 'Develop essential business leadership skills and strategic thinking. Learn from real case studies and industry experts.',
-      cost: '$199.99',
-      videoUrl: 'https://example.com/business-course',
-      trainer: {
-        userId: 105,
-        name: 'Robert Davis',
-        profilePic: 'https://via.placeholder.com/50/8b5cf6/FFFFFF?text=RD',
-      },
-      category: 'Business',
-      duration: '30 hours',
-      rating: 4.5,
-      studentsEnrolled: 750,
-      createdAt: '2024-12-18T16:00:00',
-      thumbnail: 'https://via.placeholder.com/400x225/8b5cf6/FFFFFF?text=Business+Strategy',
-    },
-    {
-      courseId: 6,
-      title: 'Advanced JavaScript & Node.js',
-      description: 'Deep dive into JavaScript ES6+, async programming, and backend development with Node.js and Express.',
-      cost: '$119.99',
-      videoUrl: 'https://example.com/javascript-course',
-      trainer: {
-        userId: 106,
-        name: 'Emma Thompson',
-        profilePic: 'https://via.placeholder.com/50/ef4444/FFFFFF?text=ET',
-      },
-      category: 'Programming',
-      duration: '45 hours',
-      rating: 4.8,
-      studentsEnrolled: 1400,
-      createdAt: '2024-12-22T13:30:00',
-      thumbnail: 'https://via.placeholder.com/400x225/ef4444/FFFFFF?text=JavaScript+Node.js',
-    },
-  ]);
+  const categories = ['All', 'Programming', 'Web Development', 'Mobile Development', 'Data Science', 'Machine Learning', 'UI/UX Design', 'Digital Marketing', 'Business', 'Other'];
 
   useEffect(() => {
-    // Load courses data on component mount
-    loadCourses();
+    // Load courses data and user enrollments on component mount
+    loadCoursesWithTrainers();
+    loadUserEnrollments();
   }, []);
+
+  // Function to load user's current enrollments
+  const loadUserEnrollments = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = currentUser.id;
+
+      if (!userId) return;
+
+      console.log('Loading user enrollments for user:', userId);
+      const response = await instance.get(`/api/enrollments/user/${userId}`);
+      const enrollments = response.data;
+      
+      // Extract course IDs from enrollments
+      const enrolledCourseIds = new Set(enrollments.map(enrollment => enrollment.courseId));
+      setEnrolledCourses(enrolledCourseIds);
+      
+      console.log('User enrolled courses:', enrolledCourseIds);
+    } catch (error) {
+      console.log('Could not load user enrollments:', error);
+      // Don't show error for this, as user might not be logged in
+    }
+  };
+
+  // Function to fetch trainer details
+  const fetchTrainerDetails = async (trainerId) => {
+    try {
+      const response = await instance.get(`/api/trainers/${trainerId}`);
+      const trainerData = response.data;
+      
+      // Also fetch user details for the trainer
+      const userResponse = await instance.get(`/api/users/${trainerId}`);
+      const userData = userResponse.data;
+      
+      return {
+        userId: trainerId,
+        name: userData.name || 'Course Instructor',
+        profilePic: userData.profilePic 
+          ? `/api/users/images/${userData.profilePic}` 
+          : `https://via.placeholder.com/50/4f46e5/FFFFFF?text=${userData.name?.charAt(0) || 'T'}`,
+        specialization: trainerData.specialization,
+        bio: trainerData.bio,
+      };
+    } catch (error) {
+      console.log(`Could not fetch trainer details for ID: ${trainerId}`);
+      return {
+        userId: trainerId,
+        name: 'Course Instructor',
+        profilePic: `https://via.placeholder.com/50/4f46e5/FFFFFF?text=${trainerId}`,
+      };
+    }
+  };
+
+  // Function to generate thumbnail from video URL or create a styled placeholder
+  const generateThumbnail = (videoUrl, title, category) => {
+    // If videoUrl is a YouTube URL, extract thumbnail
+    if (videoUrl && videoUrl.includes('youtube.com/watch')) {
+      const videoId = videoUrl.split('v=')[1]?.split('&')[0];
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+    }
+    
+    // If videoUrl is a YouTube short URL
+    if (videoUrl && videoUrl.includes('youtu.be/')) {
+      const videoId = videoUrl.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+    }
+    
+    // If videoUrl is a Vimeo URL
+    if (videoUrl && videoUrl.includes('vimeo.com/')) {
+      // For Vimeo, we'd need an API call, so fall back to styled placeholder
+    }
+    
+    // Create a styled placeholder with category-based colors
+    const categoryColors = {
+      'Programming': '4f46e5',
+      'Web Development': '059669',
+      'Mobile Development': 'dc2626',
+      'Data Science': 'ca8a04',
+      'Machine Learning': '7c3aed',
+      'UI/UX Design': 'ea580c',
+      'Digital Marketing': 'be185d',
+      'Business': '0f766e',
+      'Other': '6b7280'
+    };
+    
+    const color = categoryColors[category] || categoryColors['Other'];
+    const titleText = encodeURIComponent(title.length > 30 ? title.substring(0, 27) + '...' : title);
+    
+    return `https://via.placeholder.com/500x280/${color}/FFFFFF?text=${titleText}`;
+  };
+
+  // Enhanced function to load courses with trainer details
+  const loadCoursesWithTrainers = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log('Fetching courses from API...');
+      const response = await instance.get('/api/courses');
+      const coursesData = response.data;
+      
+      console.log('Courses fetched successfully:', coursesData);
+      
+      // Fetch trainer details for each course
+      const coursesWithTrainers = await Promise.all(
+        coursesData.map(async (course) => {
+          const trainerDetails = await fetchTrainerDetails(course.trainerId);
+          
+          return {
+            courseId: course.courseId,
+            title: course.title,
+            description: course.description,
+            cost: course.cost.toString().startsWith('$') ? course.cost : `$${course.cost}`,
+            videoUrl: course.videoUrl,
+            category: course.category || 'Other',
+            trainer: trainerDetails,
+            duration: '30 hours', // Default - consider adding to backend
+            rating: 4.5, // Default - consider adding ratings system
+            studentsEnrolled: Math.floor(Math.random() * 2000) + 100, // Random for now
+            createdAt: course.createdAt || new Date().toISOString(),
+            thumbnail: generateThumbnail(course.videoUrl, course.title, course.category || 'Other'),
+          };
+        })
+      );
+      
+      setCourses(coursesWithTrainers);
+    } catch (error) {
+      console.error('Failed to load courses:', error);
+      setError('Failed to load courses. Please try again later.');
+      
+      // Fallback to basic loadCourses function
+      await loadCourses();
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadCourses = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Mock API call - replace with actual API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsLoading(false);
+      console.log('Fetching courses from API...');
+      const response = await instance.get('/api/courses');
+      const coursesData = response.data;
+      
+      console.log('Courses fetched successfully:', coursesData);
+      
+      // Transform the API data to match the UI requirements
+      const transformedCourses = coursesData.map(course => ({
+        courseId: course.courseId,
+        title: course.title,
+        description: course.description,
+        cost: course.cost.startsWith('$') ? course.cost : `$${course.cost}`,
+        videoUrl: course.videoUrl,
+        category: course.category || 'Other',
+        trainer: {
+          userId: course.trainerId,
+          name: 'Course Instructor', // You might need to fetch trainer details separately
+          profilePic: `https://via.placeholder.com/50/4f46e5/FFFFFF?text=${course.trainerId}`,
+        },
+        duration: '30 hours', // Default duration - you might want to add this to your backend
+        rating: 4.5, // Default rating - you might want to add ratings to your backend
+        studentsEnrolled: Math.floor(Math.random() * 2000) + 100, // Random for now
+        createdAt: course.createdAt || new Date().toISOString(),
+        thumbnail: generateThumbnail(course.videoUrl, course.title, course.category || 'Other'),
+      }));
+      
+      setCourses(transformedCourses);
     } catch (error) {
       console.error('Failed to load courses:', error);
+      setError('Failed to load courses. Please try again later.');
+      
+      // Fallback to sample data for development
+      setCourses([
+        {
+          courseId: 1,
+          title: 'Sample Course - API Unavailable',
+          description: 'This is a sample course displayed because the API is not available. Please check your backend connection.',
+          cost: '$99.99',
+          videoUrl: 'https://example.com/sample-course',
+          trainer: {
+            userId: 1,
+            name: 'Sample Instructor',
+            profilePic: 'https://via.placeholder.com/50/4f46e5/FFFFFF?text=SI',
+          },
+          category: 'Programming',
+          duration: '30 hours',
+          rating: 4.0,
+          studentsEnrolled: 100,
+          createdAt: new Date().toISOString(),
+          thumbnail: 'https://via.placeholder.com/400x225/4f46e5/FFFFFF?text=Sample+Course',
+        }
+      ]);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -330,9 +416,62 @@ const TrainingCourses = () => {
     });
   };
 
-  const handleEnrollCourse = (courseId) => {
-    // Navigate to course details or enrollment page
-    navigate(`/course/${courseId}`);
+  const handleEnrollCourse = async (courseId) => {
+    // Get current user ID from localStorage or context
+    
+    const userId = localStorage.getItem('user'); // Assuming userId is stored in localStorage
+
+    if (!userId) {
+      setError('Please log in to enroll in courses.');
+      return;
+    }
+
+    // Check if already enrolled
+    if (enrolledCourses.has(courseId)) {
+      setError('You are already enrolled in this course.');
+      return;
+    }
+
+    // Set loading state for this specific course
+    setEnrollmentLoading(prev => new Set(prev).add(courseId));
+
+    try {
+      console.log('Creating enrollment...', { courseId, userId });
+      
+      const enrollmentData = {
+        courseId: courseId,
+        userId: userId
+      };
+
+      const response = await instance.post('/api/enrollments', enrollmentData);
+      
+      console.log('Enrollment created successfully:', response.data);
+      
+      // Add to enrolled courses
+      setEnrolledCourses(prev => new Set(prev).add(courseId));
+      
+      // Show success message
+      setError(null);
+      setSuccessMessage('Successfully enrolled in the course!');
+      
+    } catch (error) {
+      console.error('Failed to enroll in course:', error);
+      
+      if (error.response?.status === 409) {
+        setError('You are already enrolled in this course.');
+      } else if (error.response?.status === 404) {
+        setError('Course or user not found.');
+      } else {
+        setError('Failed to enroll in course. Please try again.');
+      }
+    } finally {
+      // Remove loading state for this course
+      setEnrollmentLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(courseId);
+        return newSet;
+      });
+    }
   };
 
   const formatDate = (dateString) => {
@@ -432,6 +571,30 @@ const TrainingCourses = () => {
           />
         )}
 
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3,
+              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(244, 67, 54, 0.2)'
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={() => loadCoursesWithTrainers()}
+                disabled={isLoading}
+              >
+                Retry
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        )}
+
         <Box sx={{ mb: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="h6" color="text.primary">
@@ -445,15 +608,30 @@ const TrainingCourses = () => {
               )}
             </Typography>
             
-            {(searchKeyword || selectedCategory !== 'All') && (
-              <Button
-                variant="text"
-                onClick={handleClearSearch}
-                sx={{ color: 'text.secondary' }}
+            <Stack direction="row" spacing={1}>
+              <IconButton
+                onClick={() => loadCoursesWithTrainers()}
+                disabled={isLoading}
+                sx={{
+                  backgroundColor: 'rgba(44, 103, 242, 0.1)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(44, 103, 242, 0.2)',
+                  },
+                }}
               >
-                Show all courses
-              </Button>
-            )}
+                <Refresh sx={{ color: '#2c67f2' }} />
+              </IconButton>
+              
+              {(searchKeyword || selectedCategory !== 'All') && (
+                <Button
+                  variant="text"
+                  onClick={handleClearSearch}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  Show all courses
+                </Button>
+              )}
+            </Stack>
           </Stack>
         </Box>
 
@@ -466,17 +644,43 @@ const TrainingCourses = () => {
                   {/* Course Thumbnail */}
                   <CardMedia
                     component="img"
-                    height="180"
+                    height="500"
                     image={course.thumbnail}
                     alt={course.title}
                     sx={{ 
                       cursor: 'pointer',
+                      backgroundColor: '#f5f5f5',
+                      objectFit: 'cover',
+                      width: '100%',
                       '&:hover': {
                         transform: 'scale(1.02)',
                         transition: 'transform 0.3s ease',
                       }
                     }}
-                    onClick={() => handleEnrollCourse(course.courseId)}
+                    onError={(e) => {
+                      // Fallback to a category-based placeholder if image fails to load
+                      const categoryColors = {
+                        'Programming': '4f46e5',
+                        'Web Development': '059669',
+                        'Mobile Development': 'dc2626',
+                        'Data Science': 'ca8a04',
+                        'Machine Learning': '7c3aed',
+                        'UI/UX Design': 'ea580c',
+                        'Digital Marketing': 'be185d',
+                        'Business': '0f766e',
+                        'Other': '6b7280'
+                      };
+                      const color = categoryColors[course.category] || categoryColors['Other'];
+                      const titleText = encodeURIComponent(course.title.length > 25 ? course.title.substring(0, 22) + '...' : course.title);
+                      e.target.src = `https://via.placeholder.com/500x280/${color}/FFFFFF?text=${titleText}`;
+                    }}
+                    onClick={() => {
+                      if (course.videoUrl && course.videoUrl !== 'https://example.com/sample-course') {
+                        window.open(course.videoUrl, '_blank', 'noopener,noreferrer');
+                      } else {
+                        handleEnrollCourse(course.courseId);
+                      }
+                    }}
                   />
                   
                   <CardContent sx={{ p: 2 }}>
@@ -597,20 +801,36 @@ const TrainingCourses = () => {
                       
                       <Button
                         variant="contained"
-                        startIcon={<PlayArrow />}
+                        startIcon={enrolledCourses.has(course.courseId) ? <School /> : <PlayArrow />}
                         onClick={() => handleEnrollCourse(course.courseId)}
+                        disabled={enrollmentLoading.has(course.courseId) || enrolledCourses.has(course.courseId)}
                         sx={{
-                          background: 'linear-gradient(45deg, #62cff4 30%, #2c67f2 90%)',
+                          background: enrolledCourses.has(course.courseId) 
+                            ? 'linear-gradient(45deg, #4caf50 30%, #2e7d32 90%)'
+                            : 'linear-gradient(45deg, #62cff4 30%, #2c67f2 90%)',
                           color: 'white',
                           borderRadius: 2,
                           textTransform: 'none',
                           fontWeight: 600,
                           '&:hover': {
-                            background: 'linear-gradient(45deg, #4fbff0 30%, #1f5ae8 90%)',
+                            background: enrolledCourses.has(course.courseId)
+                              ? 'linear-gradient(45deg, #388e3c 30%, #1b5e20 90%)'
+                              : 'linear-gradient(45deg, #4fbff0 30%, #1f5ae8 90%)',
+                          },
+                          '&:disabled': {
+                            background: enrolledCourses.has(course.courseId)
+                              ? 'linear-gradient(45deg, #4caf50 30%, #2e7d32 90%)'
+                              : 'rgba(0, 0, 0, 0.26)',
+                            color: 'white',
                           },
                         }}
                       >
-                        Enroll
+                        {enrollmentLoading.has(course.courseId) 
+                          ? 'Enrolling...' 
+                          : enrolledCourses.has(course.courseId) 
+                            ? 'Enrolled' 
+                            : 'Enroll'
+                        }
                       </Button>
                     </Stack>
                   </CardContent>
@@ -655,6 +875,26 @@ const TrainingCourses = () => {
             )}
           </Paper>
         )}
+
+        {/* Success Snackbar */}
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={4000}
+          onClose={() => setSuccessMessage('')}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={() => setSuccessMessage('')} 
+            severity="success" 
+            sx={{ 
+              backgroundColor: 'rgba(76, 175, 80, 0.9)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(76, 175, 80, 0.3)'
+            }}
+          >
+            {successMessage}
+          </Alert>
+        </Snackbar>
       </Container>
     </CoursesContainer>
   );

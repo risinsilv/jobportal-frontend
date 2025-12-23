@@ -28,7 +28,9 @@ import {
   Email,
   LocationOn,
   Close,
+  Delete,
 } from '@mui/icons-material';
+import { Assessment } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import instance from '../../Service/AxiosOrder';
@@ -331,6 +333,14 @@ const JobSeekerResume = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [createProfileDialogOpen, setCreateProfileDialogOpen] = useState(false);
   const [profileCreationStep, setProfileCreationStep] = useState(0);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [cvFile, setCvFile] = useState(null);
+  const [hasCvFile, setHasCvFile] = useState(false);
+  // CV analysis state
+  const [analyzingCv, setAnalyzingCv] = useState(false);
+  const [cvAnalysisResult, setCvAnalysisResult] = useState(null);
+  const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
 
   // Profile creation form data
   const [profileFormData, setProfileFormData] = useState({
@@ -378,6 +388,13 @@ const JobSeekerResume = () => {
     checkJobSeekerProfile();
   }, []);
 
+  useEffect(() => {
+    // Check for CV file when job seeker profile is loaded
+    if (hasJobSeekerProfile && userData.id) {
+      checkCvFile();
+    }
+  }, [hasJobSeekerProfile, userData.id]);
+
   const fetchUserData = async () => {
     try {
       const userId = localStorage.getItem('user');
@@ -415,6 +432,29 @@ const JobSeekerResume = () => {
         setSnackbarMessage('Failed to load user data');
         setSnackbarSeverity('error');
         setOpenSnackbar(true);
+      }
+    }
+  };
+
+  const checkCvFile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !userData.id) return;
+
+      const response = await instance.get(`/api/jobseekers/cv/${userData.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 200) {
+        setHasCvFile(true);
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        setHasCvFile(false);
+      } else {
+        console.error('Error checking CV file:', error);
       }
     }
   };
@@ -624,18 +664,170 @@ const JobSeekerResume = () => {
     setIsEditing(true);
   };
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      // TODO: Implement actual file upload to backend
-      // For now, just store the file name
-      setResumeData(prev => ({
-        ...prev,
-        resumeUrl: file.name
-      }));
-      setSnackbarMessage('Resume file selected successfully!');
+    if (!file) return;
+
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      setSnackbarMessage('Please select a PDF file only.');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setSnackbarMessage('File size must be less than 5MB.');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      return;
+    }
+
+    setCvFile(file);
+    await uploadCvFile(file);
+  };
+
+  const uploadCvFile = async (file) => {
+    if (!jobSeekerId) {
+      setSnackbarMessage('Job seeker profile not found.');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      return;
+    }
+
+    setUploadingCv(true);
+    try {
+      console.log("jobSeekerId:", jobSeekerId);
+      const formData = new FormData();
+      formData.append('cv', file);
+
+      const endpoint = hasCvFile 
+        ? `/api/jobseekers/update-cv/${jobSeekerId}`
+        : `/api/jobseekers/upload-cv/${jobSeekerId}`;
+
+      const response = await instance.post(endpoint, formData);
+
+      if (response.status === 200) {
+        setHasCvFile(true);
+        setSnackbarMessage('Resume uploaded successfully!');
+        setSnackbarSeverity('success');
+        setOpenSnackbar(true);
+        
+        // Update resume data with file name
+        setResumeData(prev => ({
+          ...prev,
+          resumeUrl: file.name
+        }));
+      }
+    } catch (error) {
+      console.error('Error uploading CV:', error);
+      if (error.response?.status === 401) {
+        setSnackbarMessage('Authentication failed. Please login again.');
+        navigate('/login');
+      } else {
+        setSnackbarMessage('Failed to upload resume. Please try again.');
+      }
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    } finally {
+      setUploadingCv(false);
+    }
+  };
+
+  const downloadCvFile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await instance.get(`/api/jobseekers/cv/${userData.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob',
+      });
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `resume_${userData.name || 'user'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setSnackbarMessage('Resume downloaded successfully!');
       setSnackbarSeverity('success');
       setOpenSnackbar(true);
+    } catch (error) {
+      console.error('Error downloading CV:', error);
+      if (error.response?.status === 404) {
+        setSnackbarMessage('No resume file found.');
+      } else if (error.response?.status === 401) {
+        setSnackbarMessage('Authentication failed. Please login again.');
+        navigate('/login');
+      } else {
+        setSnackbarMessage('Failed to download resume.');
+      }
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    }
+  };
+
+  const deleteCvFile = async () => {
+    if (!window.confirm('Are you sure you want to delete your resume file?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await instance.delete(`/api/jobseekers/cv/${userData.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 204) {
+        setHasCvFile(false);
+        setCvFile(null);
+        setResumeData(prev => ({
+          ...prev,
+          resumeUrl: ''
+        }));
+        setSnackbarMessage('Resume file deleted successfully!');
+        setSnackbarSeverity('success');
+        setOpenSnackbar(true);
+      }
+    } catch (error) {
+      console.error('Error deleting CV:', error);
+      if (error.response?.status === 401) {
+        setSnackbarMessage('Authentication failed. Please login again.');
+        navigate('/login');
+      } else {
+        setSnackbarMessage('Failed to delete resume file.');
+      }
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    }
+  };
+
+  // Analyze CV (send only user ID)
+  const analyzeCv = async () => {
+    if (!userData.id) return;
+    setAnalyzingCv(true);
+    setAnalysisError(null);
+    try {
+      const response = await instance.get(`/api/analyze/${userData.id}`);
+      console.log(response.data);
+      setCvAnalysisResult(response.data);
+      setAnalysisDialogOpen(true);
+    } catch (error) {
+      console.error('Error analyzing CV:', error);
+      setAnalysisError('Failed to analyze resume. Try again later.');
+      setSnackbarMessage('Resume analysis failed');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    } finally {
+      setAnalyzingCv(false);
     }
   };
 
@@ -1098,24 +1290,53 @@ const JobSeekerResume = () => {
         <Section>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h5" fontWeight="600" sx={{ color: '#000' }}>
-              Resume File
+              Resume File (PDF)
             </Typography>
+            {hasCvFile && (
+              <EditButton
+                onClick={analyzeCv}
+                disabled={analyzingCv}
+                startIcon={analyzingCv ? <CircularProgress size={16} /> : <Assessment />}
+                sx={{ ml: 'auto' }}
+              >
+                {analyzingCv ? 'Analyzing...' : 'Analyze Resume'}
+              </EditButton>
+            )}
           </Box>
           
-          {resumeData.resumeUrl ? (
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          {hasCvFile ? (
+            <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
               <EditButton
                 startIcon={<Download />}
-                onClick={() => window.open(resumeData.resumeUrl, '_blank')}
+                onClick={downloadCvFile}
+                disabled={uploadingCv}
               >
                 Download Resume
               </EditButton>
               <EditButton
                 startIcon={<Visibility />}
-                onClick={() => window.open(resumeData.resumeUrl, '_blank')}
+                onClick={downloadCvFile}
+                disabled={uploadingCv}
               >
                 View Resume
               </EditButton>
+              {isEditing && (
+                <EditButton
+                  color="error"
+                  onClick={deleteCvFile}
+                  disabled={uploadingCv}
+                  sx={{ 
+                    color: '#d32f2f',
+                    borderColor: 'rgba(211, 47, 47, 0.5)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                      borderColor: '#d32f2f',
+                    }
+                  }}
+                >
+                  Delete
+                </EditButton>
+              )}
             </Box>
           ) : (
             <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
@@ -1123,26 +1344,66 @@ const JobSeekerResume = () => {
             </Typography>
           )}
 
-          {isEditing && (
+          {(isEditing || !hasCvFile) && (
             <Box>
               <input
-                accept=".pdf,.doc,.docx"
+                accept=".pdf"
                 style={{ display: 'none' }}
                 id="resume-upload"
                 type="file"
                 onChange={handleFileUpload}
+                disabled={uploadingCv}
               />
               <label htmlFor="resume-upload">
                 <EditButton
                   component="span"
-                  startIcon={<CloudUpload />}
+                  startIcon={uploadingCv ? <CircularProgress size={16} /> : <CloudUpload />}
+                  disabled={uploadingCv}
                 >
-                  Upload Resume
+                  {uploadingCv ? 'Uploading...' : hasCvFile ? 'Replace Resume' : 'Upload Resume (PDF only)'}
                 </EditButton>
               </label>
+              {!hasCvFile && (
+                <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#666' }}>
+                  Maximum file size: 5MB. PDF format only.
+                </Typography>
+              )}
             </Box>
           )}
         </Section>
+        {/* CV Analysis Result Dialog */}
+        <Dialog
+          open={analysisDialogOpen}
+          onClose={() => setAnalysisDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              backgroundColor: 'rgba(255,255,255,0.95)'
+            }
+          }}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Assessment sx={{ color: '#0073b1' }} />
+              <Typography variant="h6" fontWeight={600}>Resume Analysis Feedback</Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent dividers>
+            {analysisError && (
+              <Alert severity="error" sx={{ mb: 2 }}>{analysisError}</Alert>
+            )}
+            {!analysisError && (
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: '#000' }}>
+                {cvAnalysisResult || 'No feedback returned.'}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAnalysisDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
         </>
         )}
 

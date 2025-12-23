@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -25,6 +25,8 @@ import {
   ListItemAvatar,
   ListItemText,
   Paper,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -43,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import instance from '../../Service/AxiosOrder';
 
 // Styled components with glassmorphism
 const CourseEnrollmentsContainer = styled(Box)(({ theme }) => ({
@@ -118,116 +121,192 @@ const GradientButton = styled(Button)(({ theme }) => ({
 }));
 
 const CourseEnrollments = () => {
+  console.log('CourseEnrollments component loaded');
   const navigate = useNavigate();
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
+  
+  // API state management
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data for trainer's courses
-  const trainerCourses = [
-    {
-      id: 1,
-      title: 'Complete React Development Bootcamp',
-      category: 'Web Development',
-      enrollments: 45,
-      completions: 32,
-      revenue: 4500,
-      rating: 4.8,
-      duration: '12 weeks',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      title: 'JavaScript Fundamentals',
-      category: 'Programming',
-      enrollments: 78,
-      completions: 65,
-      revenue: 3900,
-      rating: 4.6,
-      duration: '8 weeks',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      title: 'Advanced Node.js Development',
-      category: 'Backend Development',
-      enrollments: 23,
-      completions: 18,
-      revenue: 2300,
-      rating: 4.9,
-      duration: '10 weeks',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      title: 'UI/UX Design Principles',
-      category: 'Design',
-      enrollments: 56,
-      completions: 41,
-      revenue: 5600,
-      rating: 4.7,
-      duration: '6 weeks',
-      status: 'Completed',
-    },
-  ];
+  // Get current trainer/user ID from localStorage
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = localStorage.getItem('user');
+  const role = localStorage.getItem('role');
+  console.log('Current user role:', role);
+  console.log('Current user ID:', userId);
 
-  // Mock data for course enrollments
-  const courseEnrollments = [
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@email.com',
-      phone: '+1 (555) 123-4567',
-      enrolledDate: '2024-12-15',
-      lastActive: '2 hours ago',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-    },
-    {
-      id: 2,
-      name: 'Michael Chen',
-      email: 'michael.chen@email.com',
-      phone: '+1 (555) 234-5678',
-      enrolledDate: '2024-12-10',
-      lastActive: '1 day ago',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-    },
-    {
-      id: 3,
-      name: 'Emily Rodriguez',
-      email: 'emily.rodriguez@email.com',
-      phone: '+1 (555) 345-6789',
-      enrolledDate: '2024-12-20',
-      lastActive: '5 hours ago',
-      avatar: 'https://i.pravatar.cc/150?img=3',
-    },
-    {
-      id: 4,
-      name: 'David Wilson',
-      email: 'david.wilson@email.com',
-      phone: '+1 (555) 456-7890',
-      enrolledDate: '2024-11-28',
-      lastActive: '1 week ago',
-      avatar: 'https://i.pravatar.cc/150?img=4',
-    },
-    {
-      id: 5,
-      name: 'Lisa Thompson',
-      email: 'lisa.thompson@email.com',
-      phone: '+1 (555) 567-8901',
-      enrolledDate: '2024-12-22',
-      lastActive: '1 hour ago',
-      avatar: 'https://i.pravatar.cc/150?img=5',
-    },
-  ];
+  useEffect(() => {
+    if (role === 'Trainer' && userId) {
+      loadTrainerCourses();
+    }
+  }, [userId, role]);
 
-  const handleCourseSelect = (course) => {
+  // Function to generate video thumbnail
+  const generateVideoThumbnail = (videoUrl, title) => {
+    // If videoUrl is a YouTube URL, extract thumbnail
+    if (videoUrl && videoUrl.includes('youtube.com/watch')) {
+      const videoId = videoUrl.split('v=')[1]?.split('&')[0];
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+    }
+    
+    // If videoUrl is a YouTube short URL
+    if (videoUrl && videoUrl.includes('youtu.be/')) {
+      const videoId = videoUrl.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) {
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+    }
+
+    // If videoUrl is a Vimeo URL
+    if (videoUrl && videoUrl.includes('vimeo.com/')) {
+      const videoId = videoUrl.split('vimeo.com/')[1]?.split('?')[0];
+      if (videoId) {
+        return `https://vumbnail.com/${videoId}.jpg`;
+      }
+    }
+    
+    // Create a styled placeholder with course-based colors
+    const colors = ['4f46e5', '7c3aed', 'db2777', 'dc2626', 'ea580c', '059669', '0891b2', '3b82f6'];
+    const colorIndex = (title?.length || 0) % colors.length;
+    const color = colors[colorIndex];
+    const titleText = encodeURIComponent(title?.substring(0, 20) || 'Course Video');
+    
+    return `https://via.placeholder.com/640x360/${color}/FFFFFF?text=${titleText}`;
+  };
+
+  // Load courses created by the current trainer
+  const loadTrainerCourses = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Loading courses for trainer:', userId);
+      
+      // Get courses by trainer ID using the specific endpoint
+      const coursesResponse = await instance.get(`/api/courses/trainer/${userId}`);
+      const trainerCourses = coursesResponse.data;
+      console.log('Trainer courses found:', trainerCourses);
+      
+      // For each course, get enrollment details using the /by-course/{courseId} endpoint
+      const coursesWithEnrollments = await Promise.all(
+        trainerCourses.map(async (course) => {
+          try {
+            const enrollmentsResponse = await instance.get(`/api/enrollments/by-course/${course.courseId}`);
+            const courseEnrollments = enrollmentsResponse.data;
+            
+            return {
+              ...course,
+              enrollments: courseEnrollments.length,
+              enrollmentsList: courseEnrollments,
+              completions: Math.floor(courseEnrollments.length * 0.7), // Mock completion rate
+              revenue: courseEnrollments.length * parseFloat(course.cost.toString().replace('$', '')),
+              rating: 4.5 + Math.random() * 0.5, // Mock rating
+              status: 'Active'
+            };
+          } catch (error) {
+            console.log(`Could not load enrollments for course ${course.courseId}:`, error);
+            return {
+              ...course,
+              enrollments: 0,
+              enrollmentsList: [],
+              completions: 0,
+              revenue: 0,
+              rating: 4.5,
+              status: 'Active'
+            };
+          }
+        })
+      );
+      
+      setCourses(coursesWithEnrollments);
+      console.log('Loaded trainer courses with enrollments:', coursesWithEnrollments);
+      
+    } catch (error) {
+      console.error('Failed to load trainer courses:', error);
+      setError('Failed to load courses. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load enrollments for a specific course
+  const loadCourseEnrollments = async (courseId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Loading enrollments for course:', courseId);
+      
+      const enrollmentsResponse = await instance.get(`/api/enrollments/by-course/${courseId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const courseEnrollments = enrollmentsResponse.data;
+      
+      // For each enrollment, get user details
+      const enrollmentsWithUserDetails = await Promise.all(
+        courseEnrollments.map(async (enrollment) => {
+          try {
+            const userResponse = await instance.get(`/api/users/${enrollment.userId}`);
+            const userData = userResponse.data;
+            
+            return {
+              id: enrollment.enrollmentId,
+              name: userData.name,
+              email: userData.email,
+              phone: userData.phoneNumber || 'Not provided',
+              enrolledDate: enrollment.enrollmentDate || new Date().toISOString(),
+              lastActive: '1 hour ago', // Mock data - you might want to add this to your backend
+              progress: Math.floor(Math.random() * 100), // Mock progress
+              status: 'Active',
+              avatar: userData.profilePic 
+                ? `/api/users/images/${userData.profilePic}` 
+                : `https://via.placeholder.com/150/4f46e5/FFFFFF?text=${userData.name?.charAt(0) || 'U'}`,
+            };
+          } catch (error) {
+            console.log(`Could not load user details for enrollment ${enrollment.enrollmentId}:`, error);
+            return {
+              id: enrollment.enrollmentId,
+              name: 'Unknown User',
+              email: 'email@example.com',
+              phone: 'Not provided',
+              enrolledDate: enrollment.enrollmentDate || new Date().toISOString(),
+              lastActive: 'Unknown',
+              progress: 0,
+              status: 'Unknown',
+              avatar: 'https://via.placeholder.com/150/666/FFFFFF?text=U',
+            };
+          }
+        })
+      );
+      
+      setEnrollments(enrollmentsWithUserDetails);
+      console.log('Loaded course enrollments with user details:', enrollmentsWithUserDetails);
+      
+    } catch (error) {
+      console.error('Failed to load course enrollments:', error);
+      setError('Failed to load enrollments. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCourseSelect = async (course) => {
     setSelectedCourse(course);
+    await loadCourseEnrollments(course.courseId);
   };
 
   const handleBackToCourses = () => {
     setSelectedCourse(null);
     setSearchTerm('');
+    setEnrollments([]);
   };
 
   const handleBack = () => {
@@ -244,13 +323,34 @@ const CourseEnrollments = () => {
     setSelectedStudent(null);
   };
 
-  const filteredEnrollments = courseEnrollments.filter(student => {
+  const filteredEnrollments = enrollments.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
-  const totalEnrollments = trainerCourses.reduce((sum, course) => sum + course.enrollments, 0);
+  const totalEnrollments = courses.reduce((sum, course) => sum + course.enrollments, 0);
+
+  // Role-based access control
+  if (role !== 'Trainer') {
+    return (
+      <CourseEnrollmentsContainer>
+        <Container maxWidth="lg">
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mt: 4,
+              backgroundColor: 'rgba(255, 152, 0, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 152, 0, 0.2)'
+            }}
+          >
+            Access denied. This page is only available for trainers.
+          </Alert>
+        </Container>
+      </CourseEnrollmentsContainer>
+    );
+  }
 
   return (
     <CourseEnrollmentsContainer>
@@ -285,86 +385,322 @@ const CourseEnrollments = () => {
         {!selectedCourse ? (
           // Course List View
           <>
+            {/* Loading State */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={40} sx={{ color: '#2c67f2' }} />
+              </Box>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mb: 3,
+                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(244, 67, 54, 0.2)'
+                }}
+                action={
+                  <Button 
+                    color="inherit" 
+                    size="small" 
+                    onClick={loadTrainerCourses}
+                  >
+                    Retry
+                  </Button>
+                }
+              >
+                {error}
+              </Alert>
+            )}
+
             {/* Statistics Overview */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} md={6}>
-                <StatCard>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                    <School sx={{ fontSize: 40, color: '#2c67f2', mr: 1 }} />
-                    <Typography variant="h4" fontWeight="bold" color="#2c67f2">
-                      {trainerCourses.length}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Courses
-                  </Typography>
-                </StatCard>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <StatCard>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                    <People sx={{ fontSize: 40, color: '#4caf50', mr: 1 }} />
-                    <Typography variant="h4" fontWeight="bold" color="#4caf50">
-                      {totalEnrollments}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Enrollments
-                  </Typography>
-                </StatCard>
-              </Grid>
-            </Grid>
-
-            {/* Courses Grid */}
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#2c67f2' }}>
-              Your Courses
-            </Typography>
-            <Grid container spacing={3}>
-              {trainerCourses.map((course) => (
-                <Grid item xs={12} md={6} lg={4} key={course.id}>
-                  <GlassCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                            {course.title}
-                          </Typography>
-                          <Chip 
-                            label={course.category} 
-                            size="small" 
-                            sx={{ mb: 1, backgroundColor: '#e3f2fd' }}
-                          />
-                        </Box>
-                        <Chip
-                          label={course.status}
-                          color={course.status === 'Active' ? 'success' : 'default'}
-                          size="small"
-                        />
+            {!loading && !error && (
+              <>
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} md={3}>
+                    <StatCard>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                        <School sx={{ fontSize: 40, color: '#2c67f2', mr: 1 }} />
+                        <Typography variant="h4" fontWeight="bold" color="#2c67f2">
+                          {courses.length}
+                        </Typography>
                       </Box>
-
-                      <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Enrollments: {course.enrollments}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Duration: {course.duration}
-                          </Typography>
-                        </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Courses
+                      </Typography>
+                    </StatCard>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <StatCard>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                        <People sx={{ fontSize: 40, color: '#4caf50', mr: 1 }} />
+                        <Typography variant="h4" fontWeight="bold" color="#4caf50">
+                          {totalEnrollments}
+                        </Typography>
                       </Box>
-
-                      <GradientButton
-                        fullWidth
-                        onClick={() => handleCourseSelect(course)}
-                        startIcon={<Visibility />}
-                      >
-                        View Enrollments ({course.enrollments})
-                      </GradientButton>
-                    </CardContent>
-                  </GlassCard>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Enrollments
+                      </Typography>
+                    </StatCard>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <StatCard>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                        <CheckCircle sx={{ fontSize: 40, color: '#ff9800', mr: 1 }} />
+                        <Typography variant="h4" fontWeight="bold" color="#ff9800">
+                          {courses.reduce((sum, course) => sum + (course.completions || 0), 0)}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Completions
+                      </Typography>
+                    </StatCard>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <StatCard>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                        <Assignment sx={{ fontSize: 40, color: '#9c27b0', mr: 1 }} />
+                        <Typography variant="h4" fontWeight="bold" color="#9c27b0">
+                          ${courses.reduce((sum, course) => sum + (course.revenue || 0), 0).toFixed(0)}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Revenue
+                      </Typography>
+                    </StatCard>
+                  </Grid>
                 </Grid>
-              ))}
-            </Grid>
+
+                {/* Courses Grid */}
+                {courses.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <School sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
+                    <Typography variant="h5" color="text.secondary" gutterBottom>
+                      No Training Courses Found
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled">
+                      You haven't created any training courses yet. Start by creating your first course to manage enrollments.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: '#2c67f2' }}>
+                        Your Training Courses ({courses.length})
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Click on any course to view detailed enrollment information
+                      </Typography>
+                    </Box>
+                    <Grid container spacing={3}>
+                      {courses.map((course) => (
+                        <Grid item xs={12} md={6} lg={4} key={course.courseId}>
+                          <GlassCard>
+                            {/* Video Thumbnail Section */}
+                            {course.videoUrl && course.videoUrl !== 'https://example.com/sample-course' && (
+                              <Box 
+                                sx={{ 
+                                  position: 'relative',
+                                  paddingTop: '56.25%', // 16:9 aspect ratio
+                                  overflow: 'hidden',
+                                  borderRadius: '16px 16px 0 0',
+                                  backgroundColor: '#f5f5f5'
+                                }}
+                              >
+                                {/* Video Thumbnail */}
+                                <Box
+                                  component="img"
+                                  src={generateVideoThumbnail(course.videoUrl, course.title)}
+                                  alt={`${course.title} thumbnail`}
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.3s ease',
+                                    '&:hover': {
+                                      transform: 'scale(1.05)',
+                                    }
+                                  }}
+                                  onClick={() => window.open(course.videoUrl, '_blank')}
+                                />
+                                
+                                {/* Play Button Overlay */}
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    cursor: 'pointer',
+                                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                    borderRadius: '50%',
+                                    width: 60,
+                                    height: 60,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(44, 103, 242, 0.9)',
+                                      transform: 'translate(-50%, -50%) scale(1.1)',
+                                    }
+                                  }}
+                                  onClick={() => window.open(course.videoUrl, '_blank')}
+                                >
+                                  <PlayArrow sx={{ color: 'white', fontSize: 30, ml: 0.5 }} />
+                                </Box>
+
+                                {/* Video Duration Badge */}
+                                <Chip
+                                  label={course.duration || "30 mins"}
+                                  size="small"
+                                  sx={{
+                                    position: 'absolute',
+                                    bottom: 8,
+                                    right: 8,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    color: 'white',
+                                    fontSize: '0.75rem'
+                                  }}
+                                />
+                              </Box>
+                            )}
+                            
+                            <CardContent>
+                              {/* Course Header */}
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: '#2c67f2' }}>
+                                    {course.title}
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                                    <Chip 
+                                      label={course.category} 
+                                      size="small" 
+                                      sx={{ backgroundColor: '#e3f2fd', color: '#1976d2' }}
+                                    />
+                                    <Chip
+                                      label={course.status}
+                                      color={course.status === 'Active' ? 'success' : 'default'}
+                                      size="small"
+                                    />
+                                  </Box>
+                                </Box>
+                              </Box>
+
+                              {/* Course Description */}
+                              <Typography 
+                                variant="body2" 
+                                color="text.secondary" 
+                                sx={{ 
+                                  mb: 2, 
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  minHeight: '60px'
+                                }}
+                              >
+                                {course.description || 'No description available'}
+                              </Typography>
+
+                              {/* Course Details Grid */}
+                              <Box sx={{ mb: 3 }}>
+                                <Grid container spacing={1}>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ textAlign: 'center', p: 1, backgroundColor: 'rgba(44, 103, 242, 0.05)', borderRadius: 1 }}>
+                                      <Typography variant="h6" fontWeight="bold" color="#2c67f2">
+                                        {course.enrollments}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Enrollments
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ textAlign: 'center', p: 1, backgroundColor: 'rgba(76, 175, 80, 0.05)', borderRadius: 1 }}>
+                                      <Typography variant="h6" fontWeight="bold" color="#4caf50">
+                                        {course.cost}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Price
+                                      </Typography>
+                                    </Box>
+                                  </Grid>
+                                </Grid>
+                              </Box>
+
+                              {/* Additional Course Info */}
+                              <Box sx={{ mb: 2 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                  <strong>Course ID:</strong> {course.courseId}
+                                </Typography>
+                                {course.duration && (
+                                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                    <strong>Duration:</strong> {course.duration}
+                                  </Typography>
+                                )}
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                  <strong>Revenue:</strong> ${course.revenue?.toFixed(2) || '0.00'}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                  <strong>Completion Rate:</strong> {((course.completions / course.enrollments) * 100 || 0).toFixed(1)}%
+                                </Typography>
+                                {course.rating && (
+                                  <Typography variant="body2" color="text.secondary">
+                                    <strong>Rating:</strong> ⭐ {course.rating.toFixed(1)}/5.0
+                                  </Typography>
+                                )}
+                                {course.videoUrl && course.videoUrl !== 'https://example.com/sample-course' && (
+                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                    <strong>Video:</strong> 
+                                    <Button
+                                      variant="text"
+                                      size="small"
+                                      startIcon={<PlayArrow />}
+                                      onClick={() => window.open(course.videoUrl, '_blank')}
+                                      sx={{
+                                        color: '#ff5722',
+                                        fontSize: '0.75rem',
+                                        ml: 1,
+                                        minWidth: 'auto',
+                                        padding: '2px 8px',
+                                        '&:hover': {
+                                          backgroundColor: 'rgba(255, 87, 34, 0.04)',
+                                        },
+                                      }}
+                                    >
+                                      Watch
+                                    </Button>
+                                  </Typography>
+                                )}
+                              </Box>
+
+                              {/* Action Button */}
+                              <GradientButton
+                                fullWidth
+                                onClick={() => handleCourseSelect(course)}
+                                startIcon={<Visibility />}
+                              >
+                                View Enrollments ({course.enrollments})
+                              </GradientButton>
+                            </CardContent>
+                          </GlassCard>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </>
+                )}
+              </>
+            )}
           </>
         ) : (
           // Enrollments View for Selected Course

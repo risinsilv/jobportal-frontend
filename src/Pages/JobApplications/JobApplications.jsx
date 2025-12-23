@@ -20,6 +20,12 @@ import {
   MenuItem,
   Divider,
   LinearProgress,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
 } from '@mui/material';
 import {
   LocationOn,
@@ -34,9 +40,19 @@ import {
   MoreVert,
   Visibility,
   Delete,
+  AttachMoney,
+  Work,
+  CalendarToday,
+  Assignment,
+  School,
+  Close,
+  Language,
+  Email,
+  Phone,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import instance from '../../Service/AxiosOrder';
 
 // Styled components with glassmorphism
 const ApplicationsContainer = styled(Box)(({ theme }) => ({
@@ -201,87 +217,135 @@ const JobApplications = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [error, setError] = useState(null);
+  const [jobDetailOpen, setJobDetailOpen] = useState(false);
+  const [selectedJobDetail, setSelectedJobDetail] = useState(null);
+
+  // Get jobseeker ID from localStorage
+  const jobSeekerId = localStorage.getItem('user');
 
   // Status options based on the enum
   const statusOptions = ['All', 'Applied', 'Shortlisted', 'Rejected', 'Hired'];
 
-  // Sample application data based on the Applications entity
-  const [applications, setApplications] = useState([
-    {
-      applicationId: 1,
-      job: {
-        jobId: 101,
-        title: 'Senior Frontend Developer',
-        company: 'TechCorp Inc.',
-        location: 'San Francisco, CA',
-        logo: 'https://via.placeholder.com/50/2c67f2/FFFFFF?text=TC',
-      },
-      status: 'Shortlisted',
-      appliedAt: '2024-12-20T10:30:00',
-    },
-    {
-      applicationId: 2,
-      job: {
-        jobId: 102,
-        title: 'Full Stack Developer',
-        company: 'StartupXYZ',
-        location: 'New York, NY',
-        logo: 'https://via.placeholder.com/50/62cff4/FFFFFF?text=SX',
-      },
-      status: 'Applied',
-      appliedAt: '2024-12-25T14:15:00',
-    },
-    {
-      applicationId: 3,
-      job: {
-        jobId: 103,
-        title: 'React Developer',
-        company: 'WebSolutions',
-        location: 'Austin, TX',
-        logo: 'https://via.placeholder.com/50/4f46e5/FFFFFF?text=WS',
-      },
-      status: 'Hired',
-      appliedAt: '2024-12-15T09:45:00',
-    },
-    {
-      applicationId: 4,
-      job: {
-        jobId: 104,
-        title: 'Software Engineer',
-        company: 'InnovateLab',
-        location: 'Seattle, WA',
-        logo: 'https://via.placeholder.com/50/10b981/FFFFFF?text=IL',
-      },
-      status: 'Rejected',
-      appliedAt: '2024-12-18T16:20:00',
-    },
-    {
-      applicationId: 5,
-      job: {
-        jobId: 105,
-        title: 'UI/UX Developer',
-        company: 'DesignStudio',
-        location: 'Los Angeles, CA',
-        logo: 'https://via.placeholder.com/50/f59e0b/FFFFFF?text=DS',
-      },
-      status: 'Applied',
-      appliedAt: '2024-12-28T11:00:00',
-    },
-  ]);
-
   useEffect(() => {
-    // Load applications data on component mount
-    loadApplications();
-  }, []);
+    if (jobSeekerId) {
+      loadApplications();
+    } else {
+      setError('Please log in to view your applications.');
+    }
+  }, [jobSeekerId]);
+
+  // Function to fetch job details from job ID
+  const fetchJobDetails = async (jobId) => {
+    try {
+      const response = await instance.get(`/api/jobpostings/${jobId}`);
+      const jobData = response.data;
+      
+      // Fetch employer details if available
+      let employerDetails = {};
+      if (jobData.employerId) {
+        try {
+          const employerResponse = await instance.get(`/api/employers/${jobData.employerId}`);
+          employerDetails = {
+            companyName: employerResponse.data.companyName || jobData.companyName,
+            companyWebsite: employerResponse.data.companyWebsite,
+            companyAddress: employerResponse.data.companyAddress,
+            contactInfo: employerResponse.data.contactInfo,
+            position: employerResponse.data.position,
+          };
+        } catch (employerError) {
+          console.log('Could not fetch employer details for jobId:', jobId);
+        }
+      }
+      
+      return {
+        jobId: jobData.jobId,
+        title: jobData.title,
+        company: employerDetails.companyName || jobData.companyName || 'Company Name',
+        location: jobData.location || 'Location not specified',
+        logo: `https://via.placeholder.com/50/2c67f2/FFFFFF?text=${(employerDetails.companyName || jobData.companyName || 'C').charAt(0)}`,
+        description: jobData.description,
+        requirements: jobData.requirements,
+        salary: jobData.salary,
+        jobType: jobData.jobType,
+        employmentType: jobData.employmentType,
+        experienceLevel: jobData.experienceLevel,
+        skills: jobData.skills,
+        benefits: jobData.benefits,
+        applicationDeadline: jobData.applicationDeadline,
+        postedDate: jobData.postedDate,
+        employerId: jobData.employerId,
+        employer: employerDetails,
+        // Additional fields from JobSearch
+        companyWebsite: employerDetails.companyWebsite,
+        companyAddress: employerDetails.companyAddress,
+        contactInfo: employerDetails.contactInfo,
+      };
+    } catch (error) {
+      console.error(`Failed to fetch job details for jobId: ${jobId}`, error);
+      return {
+        jobId: jobId,
+        title: 'Job Title Unavailable',
+        company: 'Company Name',
+        location: 'Location not specified',
+        logo: `https://via.placeholder.com/50/2c67f2/FFFFFF?text=J`,
+        description: 'Job details could not be loaded.',
+        requirements: 'N/A',
+        salary: 'N/A',
+        jobType: 'N/A',
+      };
+    }
+  };
 
   const loadApplications = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Mock API call - replace with actual API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsLoading(false);
+      console.log('Loading applications for jobseeker:', jobSeekerId);
+      
+      // Fetch applications by jobseeker ID
+      const response = await instance.get(`/api/applications/by-jobseeker/${jobSeekerId}`);
+      const applicationsData = response.data;
+      
+      console.log('Applications data:', applicationsData);
+      
+      if (applicationsData.length === 0) {
+        setApplications([]);
+        return;
+      }
+      
+      // For each application, fetch the job details
+      const applicationsWithJobDetails = await Promise.all(
+        applicationsData.map(async (application) => {
+          try {
+            const jobDetails = await fetchJobDetails(application.jobId);
+            
+            return {
+              applicationId: application.applicationId,
+              job: jobDetails,
+              status: application.status,
+              appliedAt: application.appliedAt,
+              jobId: application.jobId,
+              jobSeekerId: application.jobSeekerId,
+            };
+          } catch (error) {
+            console.error(`Failed to load job details for application: ${application.applicationId}`, error);
+            return null;
+          }
+        })
+      );
+      
+      // Filter out null values (failed job loads)
+      const validApplications = applicationsWithJobDetails.filter(app => app !== null);
+      setApplications(validApplications);
+      
+      console.log('Loaded applications with job details:', validApplications);
+      
     } catch (error) {
       console.error('Failed to load applications:', error);
+      setError('Failed to load your applications. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -352,18 +416,33 @@ const JobApplications = () => {
 
   const handleViewJob = () => {
     if (selectedApplication) {
-      // Navigate to job details page
-      navigate(`/job/${selectedApplication.job.jobId}`);
+      setSelectedJobDetail(selectedApplication.job);
+      setJobDetailOpen(true);
     }
     handleMenuClose();
   };
 
-  const handleWithdrawApplication = () => {
+  const handleCloseJobDetail = () => {
+    setJobDetailOpen(false);
+    setSelectedJobDetail(null);
+  };
+
+  const handleWithdrawApplication = async () => {
     if (selectedApplication) {
-      // Remove application from list
-      setApplications(prev => 
-        prev.filter(app => app.applicationId !== selectedApplication.applicationId)
-      );
+      try {
+        // Call API to withdraw the application
+        await instance.delete(`/api/applications/${selectedApplication.applicationId}`);
+        
+        // Remove application from list
+        setApplications(prev => 
+          prev.filter(app => app.applicationId !== selectedApplication.applicationId)
+        );
+        
+        console.log('Application withdrawn successfully');
+      } catch (error) {
+        console.error('Failed to withdraw application:', error);
+        setError('Failed to withdraw application. Please try again.');
+      }
     }
     handleMenuClose();
   };
@@ -533,35 +612,64 @@ const JobApplications = () => {
           />
         )}
 
-        <Box sx={{ mb: 3 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6" color="text.primary">
-              {filteredApplications.length} application{filteredApplications.length !== 1 ? 's' : ''}
-              {(searchKeyword || selectedStatus !== 'All') && (
-                <Typography component="span" color="primary.main" sx={{ ml: 1 }}>
-                  {searchKeyword && `for "${searchKeyword}"`}
-                  {searchKeyword && selectedStatus !== 'All' && ' '}
-                  {selectedStatus !== 'All' && `with status "${selectedStatus}"`}
-                </Typography>
-              )}
-            </Typography>
-            
-            {(searchKeyword || selectedStatus !== 'All') && (
-              <Button
-                variant="text"
-                onClick={handleClearSearch}
-                sx={{ color: 'text.secondary' }}
+        {/* Error State */}
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3,
+              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(244, 67, 54, 0.2)'
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={loadApplications}
+                disabled={isLoading}
               >
-                Show all applications
+                Retry
               </Button>
-            )}
-          </Stack>
-        </Box>
+            }
+          >
+            {error}
+          </Alert>
+        )}
+
+        {!isLoading && !error && (
+          <Box sx={{ mb: 3 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6" color="text.primary">
+                {filteredApplications.length} application{filteredApplications.length !== 1 ? 's' : ''}
+                {(searchKeyword || selectedStatus !== 'All') && (
+                  <Typography component="span" color="primary.main" sx={{ ml: 1 }}>
+                    {searchKeyword && `for "${searchKeyword}"`}
+                    {searchKeyword && selectedStatus !== 'All' && ' '}
+                    {selectedStatus !== 'All' && `with status "${selectedStatus}"`}
+                  </Typography>
+                )}
+              </Typography>
+              
+              {(searchKeyword || selectedStatus !== 'All') && (
+                <Button
+                  variant="text"
+                  onClick={handleClearSearch}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  Show all applications
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        )}
 
         {/* Application Cards */}
-        {filteredApplications.length > 0 ? (
-          <Stack spacing={2}>
-            {filteredApplications.map((application) => (
+        {!isLoading && !error && (
+          <>
+            {filteredApplications.length > 0 ? (
+              <Stack spacing={2}>
+                {filteredApplications.map((application) => (
               <ApplicationCard key={application.applicationId} status={application.status}>
                 <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
                   <Stack direction="row" spacing={3} alignItems="center">
@@ -608,7 +716,69 @@ const JobApplications = () => {
                                 {application.job.location}
                               </Typography>
                             </Stack>
+
+                            {application.job.salary && application.job.salary !== 'N/A' && (
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <AttachMoney sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  {application.job.salary}
+                                </Typography>
+                              </Stack>
+                            )}
                           </Stack>
+
+                          {/* Job Type and Experience Level */}
+                          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                            {application.job.jobType && application.job.jobType !== 'N/A' && (
+                              <Chip
+                                icon={<Work sx={{ fontSize: 14 }} />}
+                                label={application.job.jobType}
+                                size="small"
+                                variant="outlined"
+                                sx={{ fontSize: '0.75rem' }}
+                              />
+                            )}
+                            {application.job.employmentType && (
+                              <Chip
+                                icon={<CalendarToday sx={{ fontSize: 14 }} />}
+                                label={application.job.employmentType}
+                                size="small"
+                                variant="outlined"
+                                sx={{ fontSize: '0.75rem' }}
+                              />
+                            )}
+                            {application.job.experienceLevel && (
+                              <Chip
+                                icon={<School sx={{ fontSize: 14 }} />}
+                                label={application.job.experienceLevel}
+                                size="small"
+                                variant="outlined"
+                                sx={{ fontSize: '0.75rem' }}
+                              />
+                            )}
+                          </Stack>
+
+                          {/* Job Description Preview */}
+                          {application.job.description && application.job.description !== 'Job details could not be loaded.' && (
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary" 
+                              sx={{ 
+                                mb: 2,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {application.job.description.length > 150 
+                                ? `${application.job.description.substring(0, 150)}...`
+                                : application.job.description
+                              }
+                            </Typography>
+                          )}
 
                           {/* Status and Date */}
                           <Stack direction="row" alignItems="center" spacing={2}>
@@ -691,6 +861,244 @@ const JobApplications = () => {
             )}
           </Paper>
         )}
+          </>
+        )}
+
+        {/* Job Detail Dialog */}
+        <Dialog
+          open={jobDetailOpen}
+          onClose={handleCloseJobDetail}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              maxHeight: '90vh',
+            },
+          }}
+        >
+          {selectedJobDetail && (
+            <>
+              <DialogTitle
+                sx={{
+                  background: 'black',
+                  color: 'white',
+                  position: 'relative',
+                  pr: 6,
+                }}
+              >
+                <Typography variant="h5" component="h2" fontWeight="bold">
+                  {selectedJobDetail.title}
+                </Typography>
+                <Typography variant="subtitle1" sx={{ mt: 1, opacity: 0.9 }}>
+                  {selectedJobDetail.company}
+                </Typography>
+                <IconButton
+                  onClick={handleCloseJobDetail}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: 8,
+                    color: 'white',
+                  }}
+                >
+                  <Close />
+                </IconButton>
+              </DialogTitle>
+
+              <DialogContent sx={{ p: 3 }}>
+                {/* Basic Job Info */}
+                <Grid container spacing={3} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6}>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <LocationOn color="primary" />
+                      <Typography variant="body1">
+                        <strong>Location:</strong> {selectedJobDetail.location}
+                      </Typography>
+                    </Stack>
+                  </Grid>
+                  
+                  {selectedJobDetail.salary && selectedJobDetail.salary !== 'N/A' && (
+                    <Grid item xs={12} sm={6}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <AttachMoney color="primary" />
+                        <Typography variant="body1">
+                          <strong>Salary:</strong> {selectedJobDetail.salary}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  )}
+
+                  {selectedJobDetail.jobType && selectedJobDetail.jobType !== 'N/A' && (
+                    <Grid item xs={12} sm={6}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Work color="primary" />
+                        <Typography variant="body1">
+                          <strong>Job Type:</strong> {selectedJobDetail.jobType}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  )}
+
+                  {selectedJobDetail.employmentType && (
+                    <Grid item xs={12} sm={6}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <CalendarToday color="primary" />
+                        <Typography variant="body1">
+                          <strong>Employment:</strong> {selectedJobDetail.employmentType}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  )}
+
+                  {selectedJobDetail.experienceLevel && (
+                    <Grid item xs={12} sm={6}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <School color="primary" />
+                        <Typography variant="body1">
+                          <strong>Experience:</strong> {selectedJobDetail.experienceLevel}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  )}
+
+                  {selectedJobDetail.applicationDeadline && (
+                    <Grid item xs={12} sm={6}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Assignment color="primary" />
+                        <Typography variant="body1">
+                          <strong>Deadline:</strong> {new Date(selectedJobDetail.applicationDeadline).toLocaleDateString()}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  )}
+                </Grid>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Job Description */}
+                {selectedJobDetail.description && selectedJobDetail.description !== 'Job details could not be loaded.' && (
+                  <>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                      Job Description
+                    </Typography>
+                    <Typography variant="body1" paragraph sx={{ lineHeight: 1.6 }}>
+                      {selectedJobDetail.description}
+                    </Typography>
+                  </>
+                )}
+
+                {/* Requirements */}
+                {selectedJobDetail.requirements && selectedJobDetail.requirements !== 'N/A' && (
+                  <>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mt: 3 }}>
+                      Requirements
+                    </Typography>
+                    <Typography variant="body1" paragraph sx={{ lineHeight: 1.6 }}>
+                      {selectedJobDetail.requirements}
+                    </Typography>
+                  </>
+                )}
+
+                {/* Skills */}
+                {selectedJobDetail.skills && (
+                  <>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mt: 3 }}>
+                      Required Skills
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                      {selectedJobDetail.skills.split(',').map((skill, index) => (
+                        <Chip
+                          key={index}
+                          label={skill.trim()}
+                          variant="outlined"
+                          size="small"
+                        />
+                      ))}
+                    </Stack>
+                  </>
+                )}
+
+                {/* Benefits */}
+                {selectedJobDetail.benefits && (
+                  <>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mt: 3 }}>
+                      Benefits
+                    </Typography>
+                    <Typography variant="body1" paragraph sx={{ lineHeight: 1.6 }}>
+                      {selectedJobDetail.benefits}
+                    </Typography>
+                  </>
+                )}
+
+                {/* Company Information */}
+                {selectedJobDetail.employer && (
+                  <>
+                    <Divider sx={{ my: 3 }} />
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                      Company Information
+                    </Typography>
+                    <Grid container spacing={2}>
+                      {selectedJobDetail.companyWebsite && (
+                        <Grid item xs={12}>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <Language color="primary" />
+                            <Typography variant="body1">
+                              <strong>Website:</strong>{' '}
+                              <Link href={selectedJobDetail.companyWebsite} target="_blank" rel="noopener">
+                                {selectedJobDetail.companyWebsite}
+                              </Link>
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                      )}
+                      {selectedJobDetail.companyAddress && (
+                        <Grid item xs={12}>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <LocationOn color="primary" />
+                            <Typography variant="body1">
+                              <strong>Address:</strong> {selectedJobDetail.companyAddress}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                      )}
+                      {selectedJobDetail.contactInfo && (
+                        <Grid item xs={12}>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <Email color="primary" />
+                            <Typography variant="body1">
+                              <strong>Contact:</strong> {selectedJobDetail.contactInfo}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </>
+                )}
+
+                {/* Posted Date */}
+                {selectedJobDetail.postedDate && (
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Posted:</strong> {new Date(selectedJobDetail.postedDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </Typography>
+                  </>
+                )}
+              </DialogContent>
+
+              <DialogActions sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+                <Button onClick={handleCloseJobDetail} variant="outlined">
+                  Close
+                </Button>
+              </DialogActions>
+            </>
+          )}
+        </Dialog>
 
         {/* Action Menu */}
         <Menu
