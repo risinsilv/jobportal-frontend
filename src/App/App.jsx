@@ -1,25 +1,43 @@
 import { useEffect, useState } from 'react';
 import './App.css';
-import Login  from '../Pages/Login';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Login from '../Pages/Login';
+import Register from '../Pages/Register/Register';
 import Dashboard from '../Pages/DashBoard/DashBoard';
+import route from '../Navigation/Navigation';
 
 function App() {
-  const [token, setToken] = useState(null); // State to track the token
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token'); // Retrieve the token from localStorage
-    setToken(storedToken); // Update the token state
+    const storedToken = localStorage.getItem('token');
+    setToken(storedToken);
+    setLoading(false);
   }, []);
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <>
-      {/* Render components based on the presence of a token */}
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={token ? <Navigate to="/" /> : <Login />} />
+      <Route path="/register" element={token ? <Navigate to="/" /> : <Register />} />
+
+      {/* Protected Routes - require token */}
       {token ? (
-        <Dashboard /> // Render the dashboard if the token exists
+        <>
+          <Route path="/" element={<Dashboard />} />
+          {route.map((r, index) => (
+            <Route key={index} path={r.path} element={r.element} />
+          ))}
+        </>
       ) : (
-        <Login /> // Render the welcome page if no token exists
+        <Route path="*" element={<Navigate to="/login" />} />
       )}
-    </>
+    </Routes>
   );
 }
 

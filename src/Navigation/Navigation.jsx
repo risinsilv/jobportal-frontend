@@ -3,12 +3,10 @@ import UserProfile from "../Pages/UserProfile/UserProfile";
 import DashBoard from "../Pages/DashBoard/DashBoard"
 import JobSeekerResume from "../Pages/JobSeekerResume/JobSeekerResume";
 import JobApplications from "../Pages/JobApplications/JobApplications"
-import Courses from "../Pages/TraningCourses/TrainingCourses";
 import PostJob from "../Pages/PostJob/PostJob";
 import Candidate from "../Pages/Candidate/Candidate";
-import CreateCourses from "../Pages/CreateCourses/CreateCourses";
-import CourseEnrollments from "../Pages/CourseEnrollments/CourseEnrollements";
-import MyCourses from "../Pages/MyCourses/MyCourses";
+import Register from "../Pages/Register/Register";
+// Removed trainer course features
 import Home from "../Pages/Home/Home";
 import { element } from "prop-types";
 
@@ -41,12 +39,6 @@ const route = [
 
     },
     {
-        name: 'Courses',
-        path:'/Courses',
-        element: <Courses/>
-
-    },
-    {
         name: 'PostJob',
         path:'/CreateJob',
         element: <PostJob/>
@@ -57,21 +49,10 @@ const route = [
         element:<Candidate/>
     },
     {
-        name: 'CreateCourses',
-        path:'/CreateCourses',
-        element:<CreateCourses/>
+        name: 'Register',
+        path:'/register',
+        element:<Register/>
     },
-    {
-        name: 'CourseEnrollments',
-        path:'/CourseEnrollments',
-        element:<CourseEnrollments/>
-    },
-    {
-        name: 'MyCourses',
-        path:'/MyCourses',
-        element:<MyCourses/>
-    }
-
-
+    
 ]
 export default route;

@@ -12,6 +12,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fontsource/open-sans": "^5.2.7",
     "@fontsource/roboto": "^5.2.6",
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
@@ -19,8 +20,8 @@
     "axios": "^1.10.0",
     "openai": "^5.12.2",
     "prop-types": "^15.8.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-router-dom": "^7.6.3",
     "styled-components": "^6.1.19"
   },

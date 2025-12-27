@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import "@fontsource/open-sans";
 import route from '../../Navigation/Navigation';
 import instance from '../../Service/AxiosOrder';
 import {
@@ -51,117 +52,128 @@ import {
   PersonAdd,
   Book,
   Assignment,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
-
-// Styled components
+ 
+ // Styled components
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #62cff4 15%, #2c67f2 100%)',
-  boxShadow: '0 4px 20px rgba(44, 103, 242, 0.15)',
-}));
-
-const DashboardContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: '#f8fafc',
-  minHeight: '100vh',
-  paddingTop: theme.spacing(10), // Add top padding to account for fixed navbar
-}));
-
-const StatsCard = styled(Card)(({ theme }) => ({
-  borderRadius: theme.spacing(2),
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
-  border: '1px solid rgba(0, 0, 0, 0.04)',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+  background: '#fff',
+  color: '#202124',
+  borderBottom: '1px solid #dadce0',
+  fontFamily: '"Google Sans"',
+  '& *': {
+    fontFamily: '"Google Sans" !important',
   },
 }));
+ 
+// const LogoText = styled(Typography)(({ theme }) => ({
+//   fontWeight: 550,
+//   fontSize: '30px',
+//   letterSpacing: 0.3,
+//   color: '#202124',
+//   cursor: 'pointer',
+//   userSelect: 'none',
+// }));
+const LogoText = styled(Typography)(({ theme }) => ({
+  position: 'absolute',
 
-const GradientButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #62cff4 30%, #2c67f2 90%)',
-  border: 0,
-  borderRadius: theme.spacing(1.5),
-  boxShadow: '0 4px 15px rgba(44, 103, 242, 0.3)',
-  color: 'white',
-  height: 40,
-  padding: '0 24px',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  textTransform: 'none',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    background: 'linear-gradient(45deg, #4fbff0 30%, #1f5ae8 90%)',
-    boxShadow: '0 6px 20px rgba(44, 103, 242, 0.4)',
-  },
+  fontWeight: 550,
+  fontSize: '25px',
+  color: '#202124',
+  zIndex: 2,
+  letterSpacing: 0.3,
 }));
 
-const Dashboard = () => {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [notificationAnchor, setNotificationAnchor] = useState(null);
-  const [quickActionAnchor, setQuickActionAnchor] = useState(null);
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [userProfilePic, setUserProfilePic] = useState(null);
-  const [userName, setUserName] = useState('');
-  const [avatarError, setAvatarError] = useState(false);
-  const [userDataLoading, setUserDataLoading] = useState(true);
-  const [userRole, setUserRole] = useState('');
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Handle avatar image load error
-  const handleAvatarError = () => {
-    console.log('Avatar image failed to load, falling back to initials');
-    setAvatarError(true);
-  };
-
-  // Fetch user profile data on component mount
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
+ 
+ const DashboardContainer = styled(Box)(({ theme }) => ({
+   marginTop: 72,
+ }));
+ 
+ const StatsCard = styled(Card)(({ theme }) => ({
+   borderRadius: 12,
+   border: '1px solid #e0e0e0',
+   boxShadow: 'none',
+ }));
+ 
+ // Dashboard component
+ const Dashboard = () => {
+   const navigate = useNavigate();
+   const location = useLocation();
+ 
+   const [anchorEl, setAnchorEl] = useState(null);
+   const [notificationAnchor, setNotificationAnchor] = useState(null);
+   const [quickActionAnchor, setQuickActionAnchor] = useState(null);
+   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+   const [userName, setUserName] = useState(localStorage.getItem('name') || '');
+   const [userProfilePic, setUserProfilePic] = useState(null);
+   const [avatarError, setAvatarError] = useState(false);
+   const [userDataLoading, setUserDataLoading] = useState(true);
+   const [userRole, setUserRole] = useState(localStorage.getItem('role') || '');
+ 
+   const handleAvatarError = () => setAvatarError(true);
+ 
+   useEffect(() => {
+     const fetchUserProfile = async () => {
+       try {
+         setUserDataLoading(true);
+        const storedName = localStorage.getItem('name') || '';
         const userId = localStorage.getItem('user');
-        const storedName = localStorage.getItem('name');
-        const storedRole = localStorage.getItem('role');
-        console.log('Use effect check');
-        if (storedName) {
-          setUserName(storedName);
-        }
-        
-        if (storedRole) {
-          setUserRole(storedRole);
-        }
-        
-        if (userId) {
-          console.log('Fetching user profile for ID:', userId);
-          const response = await instance.get(`/api/users/${userId}`);
-          const userData = response.data;
-          console.log('User data received:', userData);
-          
-          // If user has a profile picture, set the image URL
-          if (userData.profilePic) {
-            const profilePicUrl = `/api/users/images/${userData.profilePic}`;
-            console.log('Setting profile picture URL:', profilePicUrl);
-            setUserProfilePic(profilePicUrl);
+ 
+        // Preferred: fetch profile-pic via token-protected userId endpoint
+        if (userId && userId !== 'undefined') {
+          try {
+            const resp = await instance.get(`/api/users/${userId}/profile-pic`, {
+              responseType: 'text',
+            });
+            if (resp?.data) {
+              const backendBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+              const finalUrl = `${backendBase}${resp.data}`;
+              setUserProfilePic(finalUrl);
+            }
+          } catch (err) {
+            if (err?.response?.status === 403) {
+              // Not allowed: force re-login
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              localStorage.removeItem('role');
+              localStorage.removeItem('name');
+              window.location.reload();
+              return;
+            }
+            // 404 or other errors: ignore; default avatar will be shown
           }
-          
-          // Update name if not already set
-          if (userData.name && !storedName) {
-            setUserName(userData.name);
-            localStorage.setItem('name', userData.name);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        // Don't show error to user, just continue with default avatar
-        // The avatar will fall back to showing the first letter of the name
-      } finally {
-        // Set loading to false after data fetching is complete
-        setUserDataLoading(false);
-      }
-    };
 
-    fetchUserProfile();
-  }, []);
+          // Fetch user details if name/role are missing
+          try {
+            const needName = !storedName;
+            const needRole = !localStorage.getItem('role');
+            if (needName || needRole) {
+              const response = await instance.get(`/api/users/${userId}`);
+              const userData = response.data;
+              if (needName && userData?.name) {
+                setUserName(userData.name);
+                localStorage.setItem('name', userData.name);
+              }
+              if (needRole && userData?.role) {
+                setUserRole(userData.role);
+                localStorage.setItem('role', userData.role);
+              }
+            }
+          } catch (err) {
+            // Ignore if user details fail
+          }
+        }
+       } catch (error) {
+         console.error('Error fetching user profile:', error);
+       } finally {
+         setUserDataLoading(false);
+       }
+     };
+ 
+     fetchUserProfile();
+   }, []);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -230,9 +242,7 @@ const Dashboard = () => {
   };
 
   const handleTrainingClick = () => {
-    console.log('Navigating to Training Programs...');
-    navigate('/Courses');
-    // Add your navigation logic here, e.g., navigate('/training')
+    // Training feature removed
   };
 
   const handleResumeClick = () => {
@@ -252,23 +262,7 @@ const Dashboard = () => {
     // navigate('/candidates');
   };
 
-  const handleCreateCoursesClick = () => {
-    console.log('Navigating to Create Courses...');
-    navigate('/CreateCourses');
-    // Add your navigation logic here for course creation
-  };
-
-  const handleCourseEnrollmentsClick = () => {
-    console.log('Navigating to Course Enrollments...');
-    navigate('/CourseEnrollments');
-    // Add your navigation logic here for viewing course enrollments
-  };
-
-  const handleMyCoursesClick = () => {
-    console.log('Navigating to My Courses...');
-    navigate('/MyCourses');
-    // Add your navigation logic here for viewing enrolled courses
-  };
+  // Trainer course features removed
 
   const handleHomeClick = () => {
     console.log('Navigating to Home...');
@@ -311,23 +305,12 @@ const Dashboard = () => {
             onClick: handleApplicationsClick,
           },
           {
-            title: 'Training Programs',
-            icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
-            color: '#f3e5f5',
-            onClick: handleTrainingClick,
-          },
-          {
             title: 'My Resume',
             icon: <Description sx={{ fontSize: 40, color: '#ff9800' }} />,
             color: '#fff3e0',
             onClick: handleResumeClick,
           },
-          {
-            title: 'My Courses',
-            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
-            color: '#e0f2f1',
-            onClick: handleMyCoursesClick,
-          },
+          
         ];
       
       case 'Employer':
@@ -350,45 +333,16 @@ const Dashboard = () => {
             color: '#e3f2fd',
             onClick: handleJobsClick,
           },
-          {
-            title: 'Training Programs',
-            icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
-            color: '#f3e5f5',
-            onClick: handleTrainingClick,
-          },
-          {
-            title: 'My Courses',
-            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
-            color: '#e0f2f1',
-            onClick: handleMyCoursesClick,
-          },
+          
         ];
       
       case 'Trainer':
         return [
           {
-            title: 'Create Courses',
-            icon: <Add sx={{ fontSize: 40, color: '#795548' }} />,
-            color: '#efebe9',
-            onClick: handleCreateCoursesClick,
-          },
-          {
-            title: 'Course Enrollments',
-            icon: <PersonAdd sx={{ fontSize: 40, color: '#673ab7' }} />,
-            color: '#f3e5f5',
-            onClick: handleCourseEnrollmentsClick,
-          },
-          {
             title: 'Training Programs',
             icon: <School sx={{ fontSize: 40, color: '#9c27b0' }} />,
             color: '#f3e5f5',
             onClick: handleTrainingClick,
-          },
-          {
-            title: 'My Courses',
-            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
-            color: '#e0f2f1',
-            onClick: handleMyCoursesClick,
           },
         ];
       
@@ -398,12 +352,6 @@ const Dashboard = () => {
           {
             title: 'Total Jobs',
             icon: <Work sx={{ fontSize: 40, color: '#2c67f2' }} />,
-            color: '#e3f2fd',
-            onClick: handleJobsClick,
-          },
-          {
-            title: 'Active Applications',
-            icon: <People sx={{ fontSize: 40, color: '#4caf50' }} />,
             color: '#e8f5e8',
             onClick: handleApplicationsClick,
           },
@@ -413,12 +361,7 @@ const Dashboard = () => {
             color: '#f3e5f5',
             onClick: handleTrainingClick,
           },
-          {
-            title: 'My Courses',
-            icon: <School sx={{ fontSize: 40, color: '#009688' }} />,
-            color: '#e0f2f1',
-            onClick: handleMyCoursesClick,
-          },
+          
         ];
     }
   };
@@ -447,14 +390,6 @@ const Dashboard = () => {
             activeColor: '#4caf50'
           },
           { 
-            title: 'Training Programs', 
-            subtitle: 'Explore courses', 
-            icon: <School fontSize="small" />,
-            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(156, 39, 176, 0.1)',
-            activeColor: '#9c27b0'
-          },
-          { 
             title: 'My Resume', 
             subtitle: 'Update profile', 
             icon: <Description fontSize="small" />,
@@ -462,14 +397,7 @@ const Dashboard = () => {
             hoverColor: 'rgba(255, 152, 0, 0.1)',
             activeColor: '#ff9800'
           },
-          { 
-            title: 'My Courses', 
-            subtitle: 'View enrolled courses', 
-            icon: <Book fontSize="small" />,
-            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(0, 150, 136, 0.1)',
-            activeColor: '#009688'
-          }
+          
         ];
       case 'Employer':
         return [
@@ -497,56 +425,17 @@ const Dashboard = () => {
             hoverColor: 'rgba(44, 103, 242, 0.1)',
             activeColor: '#2c67f2'
           },
-          { 
-            title: 'Training Programs', 
-            subtitle: 'Explore courses', 
-            icon: <School fontSize="small" />,
-            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(156, 39, 176, 0.1)',
-            activeColor: '#9c27b0'
-          },
-          { 
-            title: 'My Courses', 
-            subtitle: 'View enrolled courses', 
-            icon: <Book fontSize="small" />,
-            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(0, 150, 136, 0.1)',
-            activeColor: '#009688'
-          }
+          
         ];
       case 'Trainer':
         return [
           { 
-            title: 'Create Courses', 
-            subtitle: 'Add new training course', 
-            icon: <Add fontSize="small" />,
-            onClick: () => { handleCreateCoursesClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(121, 85, 72, 0.1)',
-            activeColor: '#795548'
-          },
-          { 
-            title: 'Course Enrollments', 
-            subtitle: 'View student enrollments', 
-            icon: <PersonAdd fontSize="small" />,
-            onClick: () => { handleCourseEnrollmentsClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(103, 58, 183, 0.1)',
-            activeColor: '#673ab7'
-          },
-          { 
             title: 'Training Programs', 
             subtitle: 'Explore courses', 
             icon: <School fontSize="small" />,
             onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
             hoverColor: 'rgba(156, 39, 176, 0.1)',
             activeColor: '#9c27b0'
-          },
-          { 
-            title: 'My Courses', 
-            subtitle: 'View enrolled courses', 
-            icon: <Book fontSize="small" />,
-            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(0, 150, 136, 0.1)',
-            activeColor: '#009688'
           }
         ];
       default:
@@ -567,22 +456,7 @@ const Dashboard = () => {
             hoverColor: 'rgba(76, 175, 80, 0.1)',
             activeColor: '#4caf50'
           },
-          { 
-            title: 'Training Programs', 
-            subtitle: 'Explore courses', 
-            icon: <School fontSize="small" />,
-            onClick: () => { handleTrainingClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(156, 39, 176, 0.1)',
-            activeColor: '#9c27b0'
-          },
-          { 
-            title: 'My Courses', 
-            subtitle: 'View enrolled courses', 
-            icon: <Book fontSize="small" />,
-            onClick: () => { handleMyCoursesClick(); handleQuickActionClose(); },
-            hoverColor: 'rgba(0, 150, 136, 0.1)',
-            activeColor: '#009688'
-          }
+          
         ];
     }
   };
@@ -590,15 +464,6 @@ const Dashboard = () => {
   // Sample data for dashboard
   const stats = getRoleSpecificStats();
 
-  // Check if we're on the main dashboard path (empty view)
-  const isMainDashboard = location.pathname === '/' || location.pathname === '/dashboard';
-
-  // Auto-navigate to Home when on main dashboard
-  useEffect(() => {
-    if (isMainDashboard) {
-      navigate('/Home');
-    }
-  }, [isMainDashboard, navigate]);
 
   // Function to render dashboard content or empty view
   const renderDashboardContent = () => {
@@ -609,6 +474,8 @@ const Dashboard = () => {
 
           <Route key={index} path={val.path} element={val.element}></Route>
         )}
+        {/* Root path: show Home within dashboard */}
+        <Route path="/" element={route.find(r => r.path === '/Home')?.element} />
       </Routes>
     );
   };
@@ -669,30 +536,26 @@ const Dashboard = () => {
     <Box>
       {/* Navigation Bar */}
       <StyledAppBar position="fixed" elevation={0}>
-        <Toolbar sx={{position:'sticky'}}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
-            <GradientButton
-              startIcon={<Add />}
-              onClick={handleQuickActionOpen}
-              sx={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                '&:hover': { background: 'rgba(255, 255, 255, 0.3)' }
-              }}
-            >
-              Quick Action
-            </GradientButton>
+        <Toolbar>
+          {/* Left: Logo */}
+          <LogoText variant="h6" onClick={() => navigate('/Home')}>
+            <Box component="span" sx={{ color: '#4285F4' }}>J</Box>ob{' '}
+            <Box component="span" sx={{ color: '#4285F4' }}>P</Box>ortal
+          </LogoText>
 
-            <IconButton
-              onClick={handleProfileMenuOpen}
-              sx={{ p: 0 }}
-            >
+          {/* Right: Hamburger + Avatar */}
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton aria-label="menu" onClick={handleQuickActionOpen}>
+              <MenuIcon />
+            </IconButton>
+            <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0 }}>
               <Avatar
                 sx={{
-                  width: 40,
-                  height: 40,
-                  border: '2px solid rgba(255, 255, 255, 0.3)',
-                  bgcolor: !userProfilePic || avatarError ? '#2c67f2' : 'transparent',
-                  color: 'white',
+                  width: 36,
+                  height: 36,
+                  border: '1px solid #dadce0',
+                  bgcolor: !userProfilePic || avatarError ? '#4285F4' : 'transparent',
+                  color: '#fff',
                   fontWeight: 600,
                 }}
                 src={!avatarError ? userProfilePic : undefined}
@@ -714,29 +577,16 @@ const Dashboard = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+            boxShadow: 'none',
             minWidth: 200,
-            background: 'rgba(255, 255, 255, 0.15)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)', // Safari support
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: 'inherit',
-              zIndex: -1,
-            }
+            background: '#fff',
+            border: '1px solid #dadce0',
           }
         }}
         MenuListProps={{
           sx: {
             py: 1,
-            background: 'transparent',
+            background: '#fff',
           }
         }}
       >
@@ -763,30 +613,17 @@ const Dashboard = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+            boxShadow: 'none',
             maxWidth: 350,
             minWidth: 300,
-            background: 'rgba(255, 255, 255, 0.15)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)', // Safari support
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: 'inherit',
-              zIndex: -1,
-            }
+            background: '#fff',
+            border: '1px solid #dadce0',
           }
         }}
         MenuListProps={{
           sx: {
             py: 0,
-            background: 'transparent',
+            background: '#fff',
           }
         }}
       >
@@ -826,35 +663,22 @@ const Dashboard = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+            boxShadow: 'none',
             minWidth: 320,
             maxWidth: 400,
-            background: 'rgba(255, 255, 255, 0.15)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)', // Safari support
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: 'inherit',
-              zIndex: -1,
-            }
+            background: '#fff',
+            border: '1px solid #dadce0',
           }
         }}
         MenuListProps={{
           sx: {
             py: 2,
-            background: 'transparent',
+            background: '#fff',
           }
         }}
       >
         <Box sx={{ px: 2, mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c67f2', mb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#202124', mb: 1 }}>
             Quick Actions
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
@@ -874,10 +698,8 @@ const Dashboard = () => {
               px: 2,
               mx: 1,
               borderRadius: 1,
-              transition: 'all 0.2s ease',
               '&:hover': {
-                background: action.hoverColor,
-                color: action.activeColor,
+                backgroundColor: '#f5f5f5',
               }
             }}
           >
@@ -927,13 +749,20 @@ const Dashboard = () => {
           >
             Cancel
           </Button>
-          <GradientButton
+          <Button
             onClick={handleLogoutConfirm}
             startIcon={<ExitToApp />}
-            sx={{ height: 36 }}
+            variant="contained"
+            sx={{
+              height: 36,
+              background: '#4285F4',
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': { background: '#1a73e8', boxShadow: 'none' },
+            }}
           >
             Logout
-          </GradientButton>
+          </Button>
         </DialogActions>
       </Dialog>
 

@@ -35,26 +35,17 @@ const GradientBackground = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'linear-gradient(135deg, #62cff4 15%, #2c67f2 100%)',
+  background: '#ffffff',
+  color: '#202124',
   position: 'fixed',
   top: 0,
   left: 0,
   margin: 0,
   padding: 0,
   overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-    animation: 'moveBackground 20s linear infinite',
-  },
-  '@keyframes moveBackground': {
-    '0%': { transform: 'translate(0, 0)' },
-    '100%': { transform: 'translate(-60px, -60px)' },
+  fontFamily: '"Google Sans"',
+  '& *': {
+    fontFamily: '"Google Sans" !important',
   },
 }));
 
@@ -79,28 +70,49 @@ const FloatingBubble = styled(Box)(({ theme }) => ({
 const RegisterPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
   borderRadius: theme.spacing(2),
-  background: 'rgba(255, 255, 255, 0.98)',
-  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+  background: 'rgba(255, 255, 255, 0.25)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  boxShadow: 'none',
+  border: 'none',
   width: '100%',
-  maxWidth: 450,
+  maxWidth: 420,
 }));
 
 const GradientButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #62cff4 30%, #2c67f2 90%)',
+  background: '#4285F4',
   border: 0,
   borderRadius: theme.spacing(1.5),
-  boxShadow: '0 4px 15px rgba(44, 103, 242, 0.3)',
+  boxShadow: 'none',
   color: 'white',
   height: 48,
   padding: '0 30px',
   fontSize: '1rem',
   fontWeight: 600,
   textTransform: 'none',
-  transition: 'all 0.3s ease',
+  transition: 'background 0.2s ease',
   '&:hover': {
-    background: 'linear-gradient(45deg, #4fbff0 30%, #1f5ae8 90%)',
-    boxShadow: '0 6px 20px rgba(44, 103, 242, 0.4)',
+    background: '#000000',
+    boxShadow: 'none',
   },
+  '&:active': {
+    background: '#000000',
+    boxShadow: 'none',
+  },
+  '& .MuiTouchRipple-child': {
+    backgroundColor: '#ffffff',
+  },
+}));
+
+const LogoText = styled(Typography)(({ theme }) => ({
+  position: 'absolute',
+  top: theme.spacing(1),
+  left: theme.spacing(2),
+  fontWeight: 550,
+  fontSize: '30px',
+  color: '#202124',
+  zIndex: 2,
+  letterSpacing: 0.3,
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
@@ -352,13 +364,10 @@ const Register = () => {
 
   return (
     <GradientBackground>
-      {/* Floating bubbles */}
-      <FloatingBubble sx={{ width: 40, height: 40, top: '10%', left: '10%', animationDelay: '0s' }} />
-      <FloatingBubble sx={{ width: 60, height: 60, top: '20%', right: '15%', animationDelay: '2s' }} />
-      <FloatingBubble sx={{ width: 30, height: 30, top: '60%', left: '20%', animationDelay: '4s' }} />
-      <FloatingBubble sx={{ width: 50, height: 50, bottom: '20%', right: '25%', animationDelay: '1s' }} />
-      <FloatingBubble sx={{ width: 35, height: 35, top: '40%', left: '70%', animationDelay: '3s' }} />
-      <FloatingBubble sx={{ width: 45, height: 45, bottom: '40%', left: '15%', animationDelay: '5s' }} />
+      <LogoText variant="h6">
+        <Box component="span" sx={{ color: '#4285F4' }}>J</Box>ob{' '}
+        <Box component="span" sx={{ color: '#4285F4' }}>P</Box>ortal
+      </LogoText>
       
       <Container 
         maxWidth="sm" 
@@ -373,7 +382,7 @@ const Register = () => {
         }}
       >
         <Fade in timeout={800}>
-          <RegisterPaper elevation={24}>
+          <RegisterPaper>
             <Box sx={{ textAlign: 'center', mb: 3 }}>
               <Typography
                 variant="h4"
@@ -381,8 +390,8 @@ const Register = () => {
                 sx={{
                   display: 'flex',
                   justifyContent: 'left',
-                  fontWeight: 700,
-                  color: 'black'
+                  fontWeight: 600,
+                  color: '#202124'
                 }}
               >
                 Sign Up
@@ -392,7 +401,7 @@ const Register = () => {
                 sx={{
                   display: 'flex',
                   justifyContent: 'left', 
-                  color: '#A8A8A8',
+                  color: '#5f6368',
                   fontWeight: '500'
                 }}
               >
