@@ -87,9 +87,9 @@ const LogoText = styled(Typography)(({ theme }) => ({
 }));
 
  
- const DashboardContainer = styled(Box)(({ theme }) => ({
-   marginTop: 72,
- }));
+const DashboardContainer = styled(Box)(({ theme }) => ({
+  // Use Toolbar offset element instead of hard-coded margin
+}));
  
  const StatsCard = styled(Card)(({ theme }) => ({
    borderRadius: 12,
@@ -107,7 +107,7 @@ const LogoText = styled(Typography)(({ theme }) => ({
    const [quickActionAnchor, setQuickActionAnchor] = useState(null);
    const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
    const [userName, setUserName] = useState(localStorage.getItem('name') || '');
-   const [userProfilePic, setUserProfilePic] = useState(null);
+  const [userProfilePic, setUserProfilePic] = useState(null);
    const [avatarError, setAvatarError] = useState(false);
    const [userDataLoading, setUserDataLoading] = useState(true);
    const [userRole, setUserRole] = useState(localStorage.getItem('role') || '');
@@ -121,16 +121,17 @@ const LogoText = styled(Typography)(({ theme }) => ({
         const storedName = localStorage.getItem('name') || '';
         const userId = localStorage.getItem('user');
  
-        // Preferred: fetch profile-pic via token-protected userId endpoint
+        // Preferred: fetch profile-pic as file via token-protected userId endpoint
         if (userId && userId !== 'undefined') {
+          let objectUrl;
           try {
-            const resp = await instance.get(`/api/users/${userId}/profile-pic`, {
-              responseType: 'text',
+            const resp = await instance.get(`/api/users/${userId}/profile-pic/file`, {
+              responseType: 'blob',
             });
-            if (resp?.data) {
-              const backendBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-              const finalUrl = `${backendBase}${resp.data}`;
-              setUserProfilePic(finalUrl);
+            const blob = resp?.data;
+            if (blob && blob.size > 0) {
+              objectUrl = URL.createObjectURL(blob);
+              setUserProfilePic(objectUrl);
             }
           } catch (err) {
             if (err?.response?.status === 403) {
@@ -142,7 +143,14 @@ const LogoText = styled(Typography)(({ theme }) => ({
               window.location.reload();
               return;
             }
-            // 404 or other errors: ignore; default avatar will be shown
+            // Other errors: ignore; default avatar will be shown
+          } finally {
+            // Revoke object URL on effect cleanup
+            if (objectUrl) {
+              // Schedule revocation when component unmounts
+              const urlToRevoke = objectUrl;
+              window.addEventListener('beforeunload', () => URL.revokeObjectURL(urlToRevoke));
+            }
           }
 
           // Fetch user details if name/role are missing
@@ -174,6 +182,15 @@ const LogoText = styled(Typography)(({ theme }) => ({
  
      fetchUserProfile();
    }, []);
+
+  // Revoke avatar object URL when it changes or on unmount
+  useEffect(() => {
+    return () => {
+      if (userProfilePic && typeof userProfilePic === 'string' && userProfilePic.startsWith('blob:')) {
+        URL.revokeObjectURL(userProfilePic);
+      }
+    };
+  }, [userProfilePic]);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -535,7 +552,7 @@ const LogoText = styled(Typography)(({ theme }) => ({
   return (
     <Box>
       {/* Navigation Bar */}
-      <StyledAppBar position="fixed" elevation={0}>
+      <StyledAppBar position="sticky" sx={{top: 0}} elevation={0}>
         <Toolbar>
           {/* Left: Logo */}
           <LogoText variant="h6" onClick={() => navigate('/Home')}>
@@ -568,6 +585,8 @@ const LogoText = styled(Typography)(({ theme }) => ({
           </Box>
         </Toolbar>
       </StyledAppBar>
+      {/* Offset to account for fixed AppBar height */}
+      <Toolbar />
 
       {/* Profile Menu */}
       <Menu
@@ -769,176 +788,6 @@ const LogoText = styled(Typography)(({ theme }) => ({
       {/* Dashboard Content */}
       <DashboardContainer>
         <Container maxWidth="xl">
-          {/* Welcome Section */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a1a1a', mb: 1 }}>
-              Welcome back, {userName || 'User'}! 👋
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Here's what's happening with your job search today.
-            </Typography>
-          </Box>
-
-          {/* Stats Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            {stats.map((stat, index) => (
-              <Grid item xs={12} sm={6} md={4} lg={2} key={index}>
-                <StatsCard 
-                  onClick={stat.onClick}
-                  sx={{ 
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                    }
-                  }}
-                >
-                  <CardContent>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      textAlign: 'center',
-                      py: 2
-                    }}>
-                      <Box
-                        sx={{
-                          width: 60,
-                          height: 60,
-                          borderRadius: 2,
-                          backgroundColor: stat.color,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mb: 2,
-                        }}
-                      >
-                        {stat.icon}
-                      </Box>
-                      <Typography 
-                        variant="subtitle1" 
-                        sx={{ 
-                          fontWeight: 600, 
-                          color: 'text.primary',
-                          lineHeight: 1.2
-                        }}
-                      >
-                        {stat.title}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </StatsCard>
-              </Grid>
-            ))}
-          </Grid>
-
-          <Grid container spacing={3}>
-            {/* Recent Activity */}
-            {/* <Grid item xs={12} md={8}>
-              <StatsCard>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c67f2' }}>
-                      Recent Activity
-                    </Typography>
-                    <IconButton size="small">
-                      <MoreVert />
-                    </IconButton>
-                  </Box>
-                  <List>
-                    {recentActivities.map((activity, index) => (
-                      <ListItem key={activity.id} sx={{ px: 0 }}>
-                        <ListItemIcon>
-                          <Box
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 1,
-                              backgroundColor: '#f5f5f5',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#2c67f2',
-                            }}
-                          >
-                            {activity.icon}
-                          </Box>
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                {activity.title}
-                              </Typography>
-                              {getStatusIcon(activity.status)}
-                            </Box>
-                          }
-                          secondary={
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">
-                                {activity.description}
-                              </Typography>
-                              <Typography variant="caption" color="text.disabled">
-                                {activity.time}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                        <Chip
-                          label={activity.status}
-                          size="small"
-                          color={getStatusColor(activity.status)}
-                          variant="outlined"
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </CardContent>
-              </StatsCard>
-            </Grid> */}
-
-            {/* Quick Actions */}
-            {/* <Grid item xs={12} md={4}>
-              <StatsCard sx={{ height: 'fit-content' }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c67f2', mb: 3 }}>
-                    Quick Actions
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <GradientButton
-                      fullWidth
-                      startIcon={<Search />}
-                      sx={{ justifyContent: 'flex-start' }}
-                    >
-                      Browse Jobs
-                    </GradientButton>
-                    <GradientButton
-                      fullWidth
-                      startIcon={<Person />}
-                      sx={{ justifyContent: 'flex-start' }}
-                    >
-                      Update Profile
-                    </GradientButton>
-                    <GradientButton
-                      fullWidth
-                      startIcon={<School />}
-                      sx={{ justifyContent: 'flex-start' }}
-                    >
-                      Find Training
-                    </GradientButton>
-                    <GradientButton
-                      fullWidth
-                      startIcon={<TrendingUp />}
-                      sx={{ justifyContent: 'flex-start' }}
-                    >
-                      View Analytics
-                    </GradientButton>
-                  </Box>
-                </CardContent>
-              </StatsCard>
-            </Grid> */}
-          </Grid>
           {/* Render Dashboard Content or Routes */}
           {renderDashboardContent()}
         </Container>

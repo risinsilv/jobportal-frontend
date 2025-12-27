@@ -53,6 +53,7 @@ const route = [
         path:'/register',
         element:<Register/>
     },
+
     
 ]
 export default route;

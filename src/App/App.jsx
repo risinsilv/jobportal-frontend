@@ -29,10 +29,8 @@ function App() {
       {/* Protected Routes - require token */}
       {token ? (
         <>
-          <Route path="/" element={<Dashboard />} />
-          {route.map((r, index) => (
-            <Route key={index} path={r.path} element={r.element} />
-          ))}
+          {/* Use trailing * so descendant Routes inside Dashboard can match deeper paths */}
+          <Route path="/*" element={<Dashboard />} />
         </>
       ) : (
         <Route path="*" element={<Navigate to="/login" />} />

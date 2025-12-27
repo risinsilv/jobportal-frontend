@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -25,6 +25,9 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   Visibility,
@@ -35,95 +38,105 @@ import {
   Cancel,
   Lock,
   Close,
+  ExpandMore,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import instance from '../../Service/AxiosOrder';
 
-// Styled components
-const ProfileContainer = styled(Container)(({ theme }) => ({
-  minHeight: '100vh',
-  // backgroundColor: '#ffffff',
-  paddingTop: theme.spacing(4),
-  paddingBottom: theme.spacing(4),
-}));
 
 const ProfileCard = styled(Card)(({ theme }) => ({
   borderRadius: theme.spacing(2),
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
+  boxShadow: 'none',
+  border: '1px solid #dadce0',
+  background: '#fff',
   marginBottom: theme.spacing(3),
 }));
 
 const ProfileHeader = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #62cff4 15%, #2c67f2 100%)',
-  color: 'white',
-  padding: theme.spacing(3),
+  background: '#ffffff',
+  color: '#202124',
+  padding: theme.spacing(2),
   borderRadius: `${theme.spacing(2)} ${theme.spacing(2)} 0 0`,
-  position: 'relative',
+  borderBottom: '1px solid #dadce0',
 }));
 
 const GradientButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #62cff4 30%, #2c67f2 90%)',
+  background: '#4285F4',
   border: 0,
   borderRadius: theme.spacing(1.5),
-  boxShadow: '0 4px 15px rgba(44, 103, 242, 0.3)',
+  boxShadow: 'none',
   color: 'white',
-  height: 48,
-  padding: '0 30px',
+  height: 44,
+  padding: '0 24px',
   fontSize: '1rem',
   fontWeight: 600,
   textTransform: 'none',
-  transition: 'all 0.3s ease',
+  transition: 'background 0.2s ease',
   '&:hover': {
-    background: 'linear-gradient(45deg, #4fbff0 30%, #1f5ae8 90%)',
-    boxShadow: '0 6px 20px rgba(44, 103, 242, 0.4)',
+    background: '#1a73e8',
+    boxShadow: 'none',
   },
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
     borderRadius: theme.spacing(1.5),
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
     '&.Mui-focused': {
-      backgroundColor: 'white',
       '& fieldset': {
         borderColor: '#2c67f2',
         borderWidth: 2,
       }
     },
     '& fieldset': {
-      borderColor: 'rgba(0, 0, 0, 0.12)',
+      borderColor: '#dadce0',
     }
   }
 }));
 
-const StyledFormControl = styled(FormControl)(({ theme }) => ({
-  '& .MuiOutlinedInput-root': {
-    borderRadius: theme.spacing(1.5),
-    backgroundColor: '#fafafa',
-    '&.Mui-focused': {
-      backgroundColor: 'white',
-      '& fieldset': {
-        borderColor: '#2c67f2',
-        borderWidth: 2,
-      }
-    },
-    '& fieldset': {
-      borderColor: 'rgba(0, 0, 0, 0.12)',
-    }
-  }
-}));
 
 const ProfilePicContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
+  alignItems: 'flex-start',
   position: 'relative',
-  marginTop: theme.spacing(-6),
+  marginTop: theme.spacing(2),
   marginBottom: theme.spacing(2),
+  marginLeft  : 'auto', 
+}));
+
+// Minimal full-viewport wrapper (same concept as Home)
+const Page = styled(Box)(({ theme }) => ({
+  minHeight: '100vh',
+  width: '100vw',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#ffffff',
+  color: '#202124',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  margin: 0,
+  padding: 0,
+  fontFamily: '"Google Sans", Roboto, Arial, sans-serif',
+  '& *': {
+    fontFamily: '"Google Sans" !important',
+  },
+}));
+
+const LogoText = styled(Typography)(({ theme }) => ({
+  position: 'absolute',
+  top: theme.spacing(2),
+  left: theme.spacing(3),
+  fontWeight: 550,
+  fontSize: '28px',
+  color: '#202124',
+  letterSpacing: 0.3,
 }));
 
 const UserProfile = () => {
+  const objectUrlRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -160,6 +173,10 @@ const UserProfile = () => {
   const [showEmployerProfileCreation, setShowEmployerProfileCreation] = useState(false);
   const [hasTrainerProfile, setHasTrainerProfile] = useState(false);
   const [showTrainerProfileCreation, setShowTrainerProfileCreation] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -170,10 +187,32 @@ const UserProfile = () => {
         const userRole = localStorage.getItem('role');
         
         if (userId) {
-          console.log('Fetching user profile for ID:', userId);
           const response = await instance.get(`/api/users/${userId}`);
           const userData = response.data;
-          console.log('User data received:', userData);
+
+          // Fetch profile picture as a blob via token-protected endpoint
+          try {
+            const picResp = await instance.get(`/api/users/${userId}/profile-pic/file`, { responseType: 'blob' });
+            const blob = picResp?.data;
+            if (blob && blob.size > 0) {
+              if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+              const url = URL.createObjectURL(blob);
+              objectUrlRef.current = url;
+              setProfilePreview(url);
+              setAvatarError(false);
+            }
+          } catch (picErr) {
+            if (picErr?.response?.status === 403) {
+              // Not allowed: force re-login
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              localStorage.removeItem('role');
+              localStorage.removeItem('name');
+              window.location.reload();
+              return;
+            }
+            // Other errors: ignore; default avatar or selected file preview will be used
+          }
           
           let profileDataToSet = {
             name: userData.name || storedName || '',
@@ -244,11 +283,12 @@ const UserProfile = () => {
           }
 
           setProfileData(profileDataToSet);
-
-          // Set profile picture preview if available
-          if (userData.profilePic) {
-            const profilePicUrl = `/api/users/images/${userData.profilePic}`;
-            setProfilePreview(profilePicUrl);
+          // Check email verification status (requires Bearer token for same user)
+          try {
+            const verResp = await instance.get(`/api/users/${userId}/verified`);
+            setEmailVerified(Boolean(verResp?.data));
+          } catch (verErr) {
+            setEmailVerified(false);
           }
         }
       } catch (error) {
@@ -262,6 +302,16 @@ const UserProfile = () => {
     };
 
     fetchUserProfile();
+  }, []);
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
   }, []);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
@@ -306,6 +356,11 @@ const UserProfile = () => {
       }
 
       setSelectedFile(file);
+      // Revoke any existing object URL before setting a data URL preview
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
       
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -322,10 +377,10 @@ const UserProfile = () => {
 
   const getAvatarContent = () => {
     if (profilePreview && !avatarError) {
-      return <Avatar src={profilePreview} sx={{ width: 120, height: 120 }} onError={handleAvatarError} />;
+      return <Avatar src={profilePreview} sx={{ width: 120, height: 120, borderRadius: 4 }} onError={handleAvatarError} />;
     }
     return (
-      <Avatar sx={{ width: 120, height: 120, fontSize: '2rem', bgcolor: '#2c67f2' }}>
+      <Avatar sx={{ width: 120, height: 120, fontSize: '1.5rem', bgcolor: '#2c67f2', borderRadius: 4 }}>
         {profileData.name ? profileData.name.charAt(0).toUpperCase() : 'U'}
       </Avatar>
     );
@@ -516,15 +571,31 @@ const UserProfile = () => {
     setShowEmployerProfileCreation(false);
     setShowTrainerProfileCreation(false);
     // Reset preview to original if it was changed
-    if (profileData.profilePic) {
-      setProfilePreview(`/api/images/${profileData.profilePic}`);
+    const userId = localStorage.getItem('user');
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+    if (userId) {
+      instance
+        .get(`/api/users/${userId}/profile-pic/file`, { responseType: 'blob' })
+        .then((resp) => {
+          const blob = resp?.data;
+          if (blob && blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            objectUrlRef.current = url;
+            setProfilePreview(url);
+          } else {
+            setProfilePreview(null);
+          }
+        })
+        .catch(() => setProfilePreview(null));
     } else {
       setProfilePreview(null);
     }
     setAvatarError(false);
     
     // Refetch original data
-    const userId = localStorage.getItem('user');
     if (userId) {
       instance.get(`/api/users/${userId}`)
         .then(async (response) => {
@@ -597,6 +668,44 @@ const UserProfile = () => {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  const openOtpDialog = async () => {
+    const userId = localStorage.getItem('user');
+    if (!userId) return;
+    setOtpLoading(true);
+    setSnackbar({ open: false, message: '', severity: 'success' });
+    try {
+      await instance.post('api/email-otp/send', { userId: Number(userId) });
+      setOtpDialogOpen(true);
+      setSnackbar({ open: true, message: 'OTP sent to your email', severity: 'success' });
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to send OTP';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    const userId = localStorage.getItem('user');
+    if (!userId || !otpValue || otpValue.length !== 6) {
+      setSnackbar({ open: true, message: 'Enter a valid 6-digit OTP', severity: 'error' });
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      await instance.post('api/email-otp/verify', { userId: Number(userId), otp: otpValue });
+      setEmailVerified(true);
+      setOtpDialogOpen(false);
+      setOtpValue('');
+      setSnackbar({ open: true, message: 'Email verified successfully!', severity: 'success' });
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'OTP verification failed';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handlePasswordDialogClose = () => {
@@ -771,12 +880,17 @@ const UserProfile = () => {
   ];
 
   return (
-    <ProfileContainer maxWidth="md">
+    <Page>
+      <LogoText variant="h6">
+        <Box component="span" sx={{ color: '#4285F4' }}>J</Box>ob{' '}
+        <Box component="span" sx={{ color: '#4285F4' }}>P</Box>ortal
+      </LogoText>
+      <Container maxWidth="md" sx={{ textAlign: 'left' }}>
       <ProfileCard>
         <ProfileHeader>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-              My Profile
+            <Typography variant="h4" component="h1" sx={{ fontWeight: 500 }}>
+              My Account
             </Typography>
             {!isEditing ? (
               <Button
@@ -784,11 +898,11 @@ const UserProfile = () => {
                 startIcon={<Edit />}
                 onClick={() => setIsEditing(true)}
                 sx={{
-                  color: 'white',
-                  borderColor: 'white',
+                  color: '#2c67f2',
+                  borderColor: '#2c67f2',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: 'white',
+                    backgroundColor: 'rgba(44, 103, 242, 0.06)',
+                    borderColor: '#2c67f2',
                   }
                 }}
               >
@@ -801,11 +915,11 @@ const UserProfile = () => {
                   startIcon={<Cancel />}
                   onClick={handleCancel}
                   sx={{
-                    color: 'white',
-                    borderColor: 'white',
+                    color: '#2c67f2',
+                    borderColor: '#2c67f2',
                     '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      borderColor: 'white',
+                      backgroundColor: 'rgba(44, 103, 242, 0.06)',
+                      borderColor: '#2c67f2',
                     }
                   }}
                 >
@@ -817,9 +931,11 @@ const UserProfile = () => {
                   onClick={handleSave}
                   disabled={isLoading}
                   sx={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor: '#4285F4',
+                    boxShadow: 'none',
                     '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                      backgroundColor: '#1a73e8',
+                      boxShadow: 'none',
                     }
                   }}
                 >
@@ -1222,13 +1338,14 @@ const UserProfile = () => {
         </CardContent>
       </ProfileCard>
 
-      {/* Additional Information Card */}
-      <ProfileCard>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#2c67f2' }}>
+      {/* Additional Information - Collapsed to keep viewport fit */}
+      <Accordion defaultExpanded={false} sx={{ border: '1px solid #dadce0', borderRadius: 2, boxShadow: 'none', background: '#fff' }}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#202124' }}>
             Account Information
           </Typography>
-          <Divider sx={{ mb: 3 }} />
+        </AccordionSummary>
+        <AccordionDetails>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -1253,6 +1370,27 @@ const UserProfile = () => {
               <Typography variant="body1" fontWeight={500} color="success.main">
                 Active
               </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Email Verification
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body1" fontWeight={500} color={emailVerified ? 'success.main' : 'warning.main'}>
+                  {emailVerified ? 'Verified' : 'Not Verified'}
+                </Typography>
+                {!emailVerified && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={openOtpDialog}
+                    disabled={otpLoading}
+                    sx={{ ml: 1, color: '#2c67f2', borderColor: '#2c67f2', textTransform: 'none' }}
+                  >
+                    {otpLoading ? 'Sending…' : 'Verify Email'}
+                  </Button>
+                )}
+              </Box>
             </Grid>
             {profileData.role === 'Employer' && profileData.companyName && (
               <>
@@ -1297,8 +1435,49 @@ const UserProfile = () => {
               </>
             )}
           </Grid>
-        </CardContent>
-      </ProfileCard>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Email Verification Dialog */}
+      <Dialog 
+        open={otpDialogOpen} 
+        onClose={() => setOtpDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+          }
+        }}
+      >
+        <DialogTitle>
+          Verify Email
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Enter the 6-digit OTP sent to your registered email.
+          </Typography>
+          <StyledTextField
+            fullWidth
+            label="OTP"
+            value={otpValue}
+            onChange={(e) => setOtpValue(e.target.value.slice(0, 6))}
+            inputProps={{ maxLength: 6 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={() => setOtpDialogOpen(false)} sx={{ color: '#666' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleVerifyEmail}
+            disabled={otpLoading || !otpValue || otpValue.length !== 6}
+            sx={{ background: '#4285F4', textTransform: 'none', boxShadow: 'none', '&:hover': { background: '#1a73e8' } }}
+          >
+            {otpLoading ? 'Verifying…' : 'Verify'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Password Change Dialog */}
       <Dialog 
@@ -1435,7 +1614,8 @@ const UserProfile = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </ProfileContainer>
+      </Container>
+    </Page>
   );
 };
 

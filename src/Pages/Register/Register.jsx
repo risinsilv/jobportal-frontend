@@ -17,6 +17,9 @@ import {
   CircularProgress,
   Card,
   CardContent,
+  CardActionArea,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Visibility,
@@ -144,6 +147,10 @@ const RoleCard = styled(Card)(({ theme, selected }) => ({
   '&:hover': {
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
   },
+  '&:active': {
+    transform: 'scale(0.98)',
+    borderColor: '#4285F4',
+  },
 }));
 
 const Register = () => {
@@ -168,6 +175,7 @@ const Register = () => {
   const [authToken, setAuthToken] = useState(''); // Temporary JWT for OTP APIs
   const [registeredUser, setRegisteredUser] = useState(null); // UsersDto from backend
   const [profilePicUrl, setProfilePicUrl] = useState(''); // Backend-served image URL
+  const [skipOtp, setSkipOtp] = useState(false); // Option to skip OTP and auto-login
 
   const handleBack = () => {
     if (step > 1) setStep(step - 1);
@@ -317,9 +325,11 @@ const Register = () => {
 
         // Temporary login to obtain JWT for OTP endpoints
         let token = '';
+        let loginData = {};
         try {
           const loginRes = await instance.post('api/users/login', { email, password });
           token = loginRes?.data?.token || loginRes?.data?.jwt || '';
+          loginData = loginRes?.data || {};
         } catch (e) {
           // If login fails, surface a clear error
           throw new Error('Registered, but failed to obtain authorization token');
@@ -329,9 +339,26 @@ const Register = () => {
         }
         setAuthToken(token);
 
+        // If user opted to skip OTP, persist auth and go to app
+        if (skipOtp) {
+          try {
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', String(loginData?.id || newUserId));
+            localStorage.setItem('role', String(loginData?.role || selectedRole || ''));
+            localStorage.setItem('name', String(loginData?.name || `${firstName} ${lastName}`.trim()));
+            localStorage.setItem('email', email);
+          } catch {}
+          setSuccess('Account created. Logging you in...');
+          setOpenSnackbar(true);
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+          return;
+        }
+
         // 2) Send OTP
         await instance.post('api/email-otp/send', { userId: Number(newUserId) }, {
-          headers: { Authorization: token, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
 
         setSuccess('OTP sent to your email');
@@ -359,7 +386,7 @@ const Register = () => {
     setSuccess('');
     try {
       await instance.post('api/email-otp/send', { userId: Number(userId) }, {
-        headers: { Authorization: authToken, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       });
       setSuccess('OTP re-sent');
       setOpenSnackbar(true);
@@ -384,7 +411,7 @@ const Register = () => {
     setSuccess('');
     try {
       await instance.post('api/email-otp/verify', { userId: Number(userId), otp }, {
-        headers: { Authorization: authToken, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       });
       setSuccess('Email verified! Redirecting to login...');
       setOpenSnackbar(true);
@@ -757,11 +784,13 @@ const Register = () => {
 
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
                   <RoleCard
-                    selected={selectedRole === 'jobseeker'}
-                    onClick={() => setSelectedRole('jobseeker')}
-                    sx={{ p: 0,border:"1px solid 	#D3D3D3",boxShadow:'none', borderRadius: 4, }}
+                    selected={selectedRole === 'JobSeeker'}
+                    onClick={() => setSelectedRole('JobSeeker')}
+                    aria-pressed={selectedRole === 'JobSeeker'}
+                    sx={{ p: 0,border:"1px solid \t#D3D3D3",boxShadow:'none', borderRadius: 4, }}
                   >
-                    <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                    <CardActionArea>
+                      <CardContent sx={{ textAlign: 'center', p: 3 }}>
                       <PersonOutline sx={{ fontSize: 48, color: '#4285F4', mb: 2 }} />
                       <Typography variant="h6" sx={{ fontWeight: 600, color: '#202124' }}>
                         Job Seeker
@@ -769,15 +798,18 @@ const Register = () => {
                       <Typography variant="body2" color="text.secondary">
                         Find your next opportunity
                       </Typography>
-                    </CardContent>
+                      </CardContent>
+                    </CardActionArea>
                   </RoleCard>
 
                   <RoleCard
-                    selected={selectedRole === 'employer'}
-                    onClick={() => setSelectedRole('employer')}
-                    sx={{ p: 0 ,border:"1px solid 	#D3D3D3",boxShadow:'none', borderRadius: 4, }}
+                    selected={selectedRole === 'Employer'}
+                    onClick={() => setSelectedRole('Employer')}
+                    aria-pressed={selectedRole === 'Employer'}
+                    sx={{ p: 0 ,border:"1px solid \t#D3D3D3",boxShadow:'none', borderRadius: 4, }}
                   >
-                    <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                    <CardActionArea>
+                      <CardContent sx={{ textAlign: 'center', p: 3 }}>
                       <StorefrontOutlined sx={{ fontSize: 48, color: '#0F9D58', mb: 2 }} />
                       <Typography variant="h6" sx={{ fontWeight: 600, color: '#202124' }}>
                         Employer
@@ -785,8 +817,17 @@ const Register = () => {
                       <Typography variant="body2" color="text.secondary">
                         Hire talented people
                       </Typography>
-                    </CardContent>
+                      </CardContent>
+                    </CardActionArea>
                   </RoleCard>
+                </Box>
+
+                {/* Optional: Skip OTP toggle */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                  <FormControlLabel
+                    control={<Checkbox checked={skipOtp} onChange={(e) => setSkipOtp(e.target.checked)} sx={{ color: '#2c67f2' }} />}
+                    label={<Typography variant="body2" sx={{ color: '#5f6368' }}>Skip email verification for now</Typography>}
+                  />
                 </Box>
 
                 <Box sx={{ display: 'flex', gap: 2 }}>

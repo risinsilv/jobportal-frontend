@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -17,6 +17,9 @@ import {
   LinearProgress,
   Paper,
   CircularProgress,
+  Stepper,
+  Step,
+  StepLabel,
 } from '@mui/material';
 import {
   Edit,
@@ -171,152 +174,110 @@ if (typeof document !== 'undefined' && !document.getElementById('jobseeker-print
   document.head.appendChild(styleElement);
 }
 
-// Styled components - LinkedIn style
+// Styled components - Minimal Google theme
 const ResumeContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: 'transparent',
-  minHeight: '100vh',
+  minHeight: 'calc(100vh - 64px)',
+  background: '#ffffff',
+  color: '#202124',
   paddingTop: theme.spacing(2),
+  paddingBottom: theme.spacing(2),
+  fontFamily: '"Google Sans"',
+  '& *': { fontFamily: '"Google Sans" !important' },
+  [theme.breakpoints.down('sm')]: {
+    minHeight: 'calc(100vh - 56px)'
+  }
 }));
 
 const HeaderSection = styled(Box)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(1),
+  background: '#ffffff',
+  color: '#202124',
+  padding: theme.spacing(2),
+  marginBottom: theme.spacing(2),
   position: 'relative',
-  borderRadius: 12,
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+  borderRadius: theme.spacing(2),
+  border: '1px solid #dadce0',
+  boxShadow: 'none',
 }));
 
 const ProfileBanner = styled(Box)(({ theme }) => ({
-  height: 200,
-  background: 'linear-gradient(135deg, #62cff4 15%, #2c67f2 100%)',
-  borderRadius: '12px 12px 0 0',
+  height: 128,
+  background: '#ffffff',
+  borderRadius: `${theme.spacing(2)} ${theme.spacing(2)} 0 0`,
+  borderBottom: '1px solid #dadce0',
   position: 'relative',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 'inherit',
-    backdropFilter: 'blur(10px)',
-  },
 }));
 
 const ProfileContent = styled(Box)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-  backdropFilter: 'blur(15px)',
-  WebkitBackdropFilter: 'blur(15px)',
+  background: '#ffffff',
+  color: '#202124',
   paddingBottom: theme.spacing(3),
   position: 'relative',
-  borderRadius: '0 0 12px 12px',
+  borderRadius: `0 0 ${theme.spacing(2)} ${theme.spacing(2)}`,
+  border: '1px solid #dadce0',
+  borderTop: '0',
+  boxShadow: 'none',
 }));
 
 const Section = styled(Box)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(1),
-  borderRadius: 12,
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-    transform: 'translateY(-2px)',
-  },
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
-    borderRadius: 'inherit',
-    pointerEvents: 'none',
-  },
+  background: '#ffffff',
+  color: '#202124',
+  padding: theme.spacing(2),
+  marginBottom: theme.spacing(2),
+  borderRadius: theme.spacing(2),
+  border: '1px solid #dadce0',
+  boxShadow: 'none',
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
-    backgroundColor: 'rgba(243, 242, 239, 0.8)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    borderRadius: 12,
-    fontSize: '14px',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    transition: 'all 0.3s ease',
-    '& fieldset': {
-      borderColor: 'rgba(230, 230, 230, 0.5)',
-    },
-    '&:hover': {
-      backgroundColor: 'rgba(243, 242, 239, 0.9)',
-      '& fieldset': {
-        borderColor: 'rgba(0, 115, 177, 0.5)',
-      },
-    },
+    borderRadius: theme.spacing(1.5),
+    backgroundColor: '#ffffff',
     '&.Mui-focused': {
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      boxShadow: '0 0 20px rgba(0, 115, 177, 0.2)',
       '& fieldset': {
-        borderColor: '#0073b1',
+        borderColor: '#2c67f2',
         borderWidth: 2,
-      },
+      }
     },
-  },
-  '& .MuiInputBase-input': {
-    padding: '12px 14px',
-  },
+    '& fieldset': {
+      borderColor: '#dadce0',
+    }
+  }
 }));
 
 const EditButton = styled(Button)(({ theme }) => ({
-  color: '#0073b1',
-  borderColor: 'rgba(0, 115, 177, 0.5)',
-  backgroundColor: 'rgba(255, 255, 255, 0.7)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
-  borderRadius: 20,
+  color: '#2c67f2',
+  borderColor: '#2c67f2',
+  backgroundColor: 'transparent',
+  borderRadius: theme.spacing(1.5),
   textTransform: 'none',
   fontWeight: 600,
   fontSize: '14px',
   padding: '6px 16px',
-  border: '1px solid rgba(0, 115, 177, 0.3)',
-  transition: 'all 0.3s ease',
+  border: '1px solid #2c67f2',
+  boxShadow: 'none',
   '&:hover': {
-    backgroundColor: 'rgba(0, 115, 177, 0.08)',
-    borderColor: '#0073b1',
-    backdropFilter: 'blur(15px)',
-    boxShadow: '0 4px 15px rgba(0, 115, 177, 0.2)',
+    backgroundColor: 'rgba(44, 103, 242, 0.06)',
+    borderColor: '#2c67f2',
+    boxShadow: 'none',
   },
 }));
 
 const SaveButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #0073b1 0%, #005885 100%)',
+  backgroundColor: '#4285F4',
   color: 'white',
-  borderRadius: 20,
+  borderRadius: theme.spacing(1.5),
   textTransform: 'none',
   fontWeight: 600,
   fontSize: '14px',
   padding: '8px 24px',
   border: 'none',
-  boxShadow: '0 4px 15px rgba(0, 115, 177, 0.3)',
-  transition: 'all 0.3s ease',
+  boxShadow: 'none',
   '&:hover': {
-    background: 'linear-gradient(135deg, #005885 0%, #004066 100%)',
-    boxShadow: '0 6px 20px rgba(0, 115, 177, 0.4)',
-    transform: 'translateY(-1px)',
+    backgroundColor: '#1a73e8',
+    boxShadow: 'none',
   },
   '&:disabled': {
-    background: 'rgba(204, 204, 204, 0.8)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#c6dafc',
     boxShadow: 'none',
   },
 }));
@@ -330,6 +291,7 @@ const JobSeekerResume = () => {
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+    const objectUrlRef = useRef(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [createProfileDialogOpen, setCreateProfileDialogOpen] = useState(false);
   const [profileCreationStep, setProfileCreationStep] = useState(0);
@@ -414,11 +376,19 @@ const JobSeekerResume = () => {
           location: userResponse.location || '',
           profilePic: userResponse.profilePic || null,
         });
-
-        // Set profile picture preview if available
-        if (userResponse.profilePic) {
-          const profilePicUrl = `/api/users/images/${userResponse.profilePic}`;
-          setProfilePreview(profilePicUrl);
+        // Fetch profile picture as blob via protected endpoint
+        try {
+          const picResp = await instance.get(`/api/users/${userId}/profile-pic/file`, { responseType: 'blob' });
+          const blob = picResp?.data;
+          if (blob && blob.size > 0) {
+            if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+            const url = URL.createObjectURL(blob);
+            objectUrlRef.current = url;
+            setProfilePreview(url);
+            setAvatarError(false);
+          }
+        } catch (picErr) {
+          // Ignore; default avatar fallback will be shown
         }
       }
     } catch (error) {
@@ -839,6 +809,16 @@ const JobSeekerResume = () => {
     setAvatarError(true);
   };
 
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
+
   const getAvatarContent = () => {
     if (profilePreview && !avatarError) {
       return (
@@ -878,7 +858,7 @@ const JobSeekerResume = () => {
 
   return (
     <ResumeContainer>
-      <Container maxWidth="md">
+      <Container maxWidth={false} sx={{ px: { xs: 2, md: 4 }, maxWidth: 'none', width: '100%' }}>
         {/* Loading State */}
         {isLoading && !hasJobSeekerProfile && (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
@@ -1426,40 +1406,40 @@ const JobSeekerResume = () => {
           }}
         >
           <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #0073b1 0%, #005885 100%)',
-            color: 'white',
-            borderRadius: '12px 12px 0 0',
+            background: '#ffffff',
+            color: '#202124',
+            borderRadius: '16px 16px 0 0',
             textAlign: 'center',
             position: 'relative',
+            borderBottom: '1px solid #dadce0',
           }}>
             <Typography variant="h6" fontWeight="bold">
               Create Your Job Seeker Profile
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9, mt: 1 }}>
+            <Typography variant="body2" sx={{ color: '#5f6368', mt: 0.5 }}>
               Step {profileCreationStep + 1} of 4
             </Typography>
-            {/* Progress indicator */}
-            <Box sx={{ 
-              position: 'absolute', 
-              bottom: 0, 
-              left: 0,
-              right: 0,
-              height: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.2)'
-            }}>
-              <Box sx={{ 
-                height: '100%', 
-                backgroundColor: 'white', 
-                width: `${((profileCreationStep + 1) / 4) * 100}%`,
-                transition: 'width 0.3s ease'
-              }} />
+            <Box sx={{ mt: 2 }}>
+              <Stepper activeStep={profileCreationStep} alternativeLabel>
+                {['Info', 'Experience', 'Education & Skills', 'Certifications'].map((label) => (
+                  <Step key={label}>
+                    <StepLabel sx={{ '& .MuiStepLabel-label': { fontSize: '0.85rem' } }}>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
             </Box>
           </DialogTitle>
           
           <DialogContent sx={{ p: 4 }}>
             {/* Step 0: Basic Info, Title, Address & About */}
             {profileCreationStep === 0 && (
-              <Box>
+              <Box sx={{
+                animation: 'slideUp 0.3s ease-out',
+                '@keyframes slideUp': {
+                  from: { opacity: 0, transform: 'translateY(12px)' },
+                  to: { opacity: 1, transform: 'translateY(0)' }
+                }
+              }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   Professional Information
                 </Typography>
@@ -1510,7 +1490,9 @@ const JobSeekerResume = () => {
 
             {/* Step 1: Experience & Job History */}
             {profileCreationStep === 1 && (
-              <Box>
+              <Box sx={{
+                animation: 'slideUp 0.3s ease-out'
+              }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   Your Work Experience
                 </Typography>
@@ -1531,7 +1513,9 @@ const JobSeekerResume = () => {
 
             {/* Step 2: Education & Skills */}
             {profileCreationStep === 2 && (
-              <Box>
+              <Box sx={{
+                animation: 'slideUp 0.3s ease-out'
+              }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   Education & Skills
                 </Typography>
@@ -1570,7 +1554,9 @@ const JobSeekerResume = () => {
 
             {/* Step 3: Certifications & Final Review */}
             {profileCreationStep === 3 && (
-              <Box>
+              <Box sx={{
+                animation: 'slideUp 0.3s ease-out'
+              }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   Certifications & Review
                 </Typography>
