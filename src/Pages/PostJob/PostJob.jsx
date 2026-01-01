@@ -5,179 +5,74 @@ import {
   Typography,
   TextField,
   Button,
-  Paper,
   Grid,
-  Chip,
   Alert,
   Snackbar,
-  LinearProgress,
-  Card,
-  CardContent,
-  Stepper,
-  Step,
-  StepLabel,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Collapse,
   IconButton,
-  Divider,
 } from '@mui/material';
-import {
-  ArrowBack,
-  Work,
-  LocationOn,
-  AttachMoney,
-  Description,
-  CheckCircle,
-  Preview,
-  Publish,
-  Clear,
-} from '@mui/icons-material';
+import { ExpandMore, Add, Delete } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import instance from '../../Service/AxiosOrder';
+import '@fontsource/open-sans';
 
-// Styled components with glassmorphism
-const PostJobContainer = styled(Box)(({ theme }) => ({
-
+const Page = styled(Box)(({ theme }) => ({
+  width: '100%',
   minHeight: '100vh',
-  paddingTop: theme.spacing(3),
-  paddingBottom: theme.spacing(3),
-}));
-
-const PostJobHeader = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(3),
-  borderRadius: theme.spacing(2),
-  background: 'linear-gradient(135deg, #62cff4 15%, #2c67f2 100%)',
-  color: 'white',
-  boxShadow: '0 8px 32px rgba(44, 103, 242, 0.3)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  position: 'relative',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 'inherit',
-    backdropFilter: 'blur(10px)',
+  color: '#202124',
+  fontFamily: '"Google Sans"',
+  '& *': {
+    fontFamily: '"Google Sans" !important',
   },
-}));
-
-const FormCard = styled(Card)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  borderRadius: theme.spacing(2),
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-  marginBottom: theme.spacing(3),
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  '& .MuiOutlinedInput-root': {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    borderRadius: theme.spacing(1),
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    transition: 'all 0.3s ease',
-    '& fieldset': {
-      borderColor: 'rgba(0, 0, 0, 0.1)',
-    },
-    '&:hover fieldset': {
-      borderColor: 'rgba(44, 103, 242, 0.5)',
-    },
-    '&.Mui-focused': {
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      '& fieldset': {
-        borderColor: '#2c67f2',
-        borderWidth: 2,
-      },
-    },
-  },
-}));
-
-const GradientButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(135deg, #62cff4 15%, #2c67f2 100%)',
-  color: 'white',
-  borderRadius: theme.spacing(1.5),
-  boxShadow: '0 4px 15px rgba(44, 103, 242, 0.3)',
-  padding: theme.spacing(1.5, 3),
-  fontSize: '1rem',
-  fontWeight: 600,
-  textTransform: 'none',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    background: 'linear-gradient(135deg, #4fbff0 15%, #1f5ae8 100%)',
-    boxShadow: '0 6px 20px rgba(44, 103, 242, 0.4)',
-    transform: 'translateY(-2px)',
-  },
-  '&:disabled': {
-    background: 'rgba(0, 0, 0, 0.12)',
-    color: 'rgba(0, 0, 0, 0.26)',
-    boxShadow: 'none',
-  },
-}));
-
-const PreviewCard = styled(Paper)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  backdropFilter: 'blur(15px)',
-  WebkitBackdropFilter: 'blur(15px)',
-  borderRadius: theme.spacing(2),
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-  padding: theme.spacing(3),
-  marginTop: theme.spacing(2),
 }));
 
 const PostJob = () => {
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  // Form data based on JobPostings entity
   const [jobData, setJobData] = useState({
     title: '',
     description: '',
     location: '',
-    salary: '',
-    requirements: '',
+    salaryMin: '',
+    salaryMax: '',
+    currency: '',
+    experienceLevel: '',
+    jobType: '',
+    workplaceType: '',
+    responsibilities: [''],
+    requirements: [''],
+    niceToHave: [''],
+    other: '',
     status: 'Open',
-    employmentType: '',
-    experience: '',
-    category: '',
-    skills: [],
   });
 
-  // Form validation errors
   const [errors, setErrors] = useState({});
+  
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState({
+    requirements: false,
+    responsibilities: false,
+    niceToHave: false,
+    other: false,
+    jobDetails: false,
+    salary: false,
+  });
 
-  // Steps for the stepper
-  const steps = ['Job Details', 'Requirements & Skills', 'Review & Publish'];
-
-
-  const commonSkills = [
-    'JavaScript',
-    'React',
-    'Node.js',
-    'Python',
-    'Java',
-    'SQL',
-    'AWS',
-    'Docker',
-    'Git',
-    'Project Management',
-    'Communication',
-    'Leadership',
-    'Problem Solving',
-    'Teamwork',
-  ];
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   const handleInputChange = (field) => (event) => {
     setJobData(prev => ({
@@ -185,7 +80,6 @@ const PostJob = () => {
       [field]: event.target.value
     }));
 
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -194,71 +88,85 @@ const PostJob = () => {
     }
   };
 
-  const handleSkillAdd = (skill) => {
-    if (!jobData.skills.includes(skill)) {
-      setJobData(prev => ({
+  // Handle point-by-point array fields
+  const handleArrayFieldChange = (field, index) => (event) => {
+    const newArray = [...jobData[field]];
+    newArray[index] = event.target.value;
+    setJobData(prev => ({
+      ...prev,
+      [field]: newArray
+    }));
+
+    if (errors[field]) {
+      setErrors(prev => ({
         ...prev,
-        skills: [...prev.skills, skill]
+        [field]: ''
       }));
     }
   };
 
-  const handleSkillRemove = (skillToRemove) => {
+  const addArrayField = (field) => {
     setJobData(prev => ({
       ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
+      [field]: [...prev[field], '']
+    }));
+  };
+
+  const removeArrayField = (field, index) => {
+    const newArray = jobData[field].filter((_, i) => i !== index);
+    // Ensure at least one field remains
+    if (newArray.length === 0) {
+      newArray.push('');
+    }
+    setJobData(prev => ({
+      ...prev,
+      [field]: newArray
     }));
   };
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!jobData.title.trim()) newErrors.title = 'Job title is required';
-    if (!jobData.description.trim()) newErrors.description = 'Job description is required';
-    if (!jobData.location.trim()) newErrors.location = 'Location is required';
-    if (!jobData.salary.trim()) newErrors.salary = 'Salary information is required';
-    if (!jobData.requirements.trim()) newErrors.requirements = 'Requirements are required';
+    if (!jobData.title.trim() || jobData.title.length < 3) {
+      newErrors.title = 'Job title is required (min 3 characters)';
+    }
+    if (!jobData.description.trim()) {
+      newErrors.description = 'Job description is required';
+    }
+    if (!jobData.location.trim()) {
+      newErrors.location = 'Location is required';
+    }
+    const nonEmptyRequirements = jobData.requirements.filter(r => r.trim());
+    if (nonEmptyRequirements.length === 0) {
+      newErrors.requirements = 'At least one requirement is required';
+    }
+
+    // Salary validation
+    if (jobData.salaryMin || jobData.salaryMax) {
+      const min = parseFloat(jobData.salaryMin);
+      const max = parseFloat(jobData.salaryMax);
+      
+      if (jobData.salaryMin && isNaN(min)) {
+        newErrors.salaryMin = 'Invalid salary minimum';
+      }
+      if (jobData.salaryMax && isNaN(max)) {
+        newErrors.salaryMax = 'Invalid salary maximum';
+      }
+      if (!isNaN(min) && !isNaN(max) && min > max) {
+        newErrors.salaryMin = 'Minimum salary cannot exceed maximum';
+      }
+      if ((jobData.salaryMin || jobData.salaryMax) && !jobData.currency) {
+        newErrors.currency = 'Currency is required when salary is specified';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
-    if (activeStep === 0) {
-      // Validate basic job details
-      const step1Errors = {};
-      if (!jobData.title.trim()) step1Errors.title = 'Job title is required';
-      if (!jobData.description.trim()) step1Errors.description = 'Job description is required';
-      if (!jobData.location.trim()) step1Errors.location = 'Location is required';
-      if (!jobData.salary.trim()) step1Errors.salary = 'Salary information is required';
-
-      if (Object.keys(step1Errors).length > 0) {
-        setErrors(step1Errors);
-        return;
-      }
-    }
-
-    if (activeStep === 1) {
-      // Validate requirements and skills
-      const step2Errors = {};
-      if (!jobData.requirements.trim()) step2Errors.requirements = 'Requirements are required';
-
-      if (Object.keys(step2Errors).length > 0) {
-        setErrors(step2Errors);
-        return;
-      }
-    }
-
-    setActiveStep(prev => prev + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep(prev => prev - 1);
-  };
-
   const handleSubmit = async () => {
     if (!validateForm()) {
-      setSnackbarMessage('Please fill in all required fields');
+      setSnackbarMessage('Please fix the errors in the form');
       setSnackbarSeverity('error');
       setOpenSnackbar(true);
       return;
@@ -266,9 +174,8 @@ const PostJob = () => {
 
     setIsLoading(true);
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const userId = localStorage.getItem('user');
+      if (!userId) {
         setSnackbarMessage('Authentication required. Please login again.');
         setSnackbarSeverity('error');
         setOpenSnackbar(true);
@@ -276,373 +183,547 @@ const PostJob = () => {
         return;
       }
 
-      // Prepare job posting data according to JobPostingsDto
       const jobPostingData = {
-        employerId: localStorage.getItem('user'),
+        employerId: parseInt(userId),
         title: jobData.title,
         description: jobData.description,
         location: jobData.location,
-        salary: jobData.salary,
-        requirements: jobData.requirements,
+        requirements: jobData.requirements.filter(r => r.trim()).join('\n• '),
         status: jobData.status,
-        // skills: jobData.skills.join(', '), // Convert array to comma-separated string
-        // employer will be set by backend based on the authenticated user
       };
 
-      console.log('Submitting job posting:', jobPostingData);
-
-      // Call the API endpoint with Authorization header
+      // Add optional fields only if they have values
+      if (jobData.salaryMin) jobPostingData.salaryMin = parseFloat(jobData.salaryMin);
+      if (jobData.salaryMax) jobPostingData.salaryMax = parseFloat(jobData.salaryMax);
+      if (jobData.currency) jobPostingData.currency = jobData.currency;
+      if (jobData.experienceLevel) jobPostingData.experienceLevel = jobData.experienceLevel;
+      if (jobData.jobType) jobPostingData.jobType = jobData.jobType;
+      if (jobData.workplaceType) jobPostingData.workplaceType = jobData.workplaceType;
+      
+      const nonEmptyResponsibilities = jobData.responsibilities.filter(r => r.trim());
+      if (nonEmptyResponsibilities.length > 0) {
+        jobPostingData.responsibilities = nonEmptyResponsibilities.join('\n• ');
+      }
+      
+      const nonEmptyNiceToHave = jobData.niceToHave.filter(r => r.trim());
+      if (nonEmptyNiceToHave.length > 0) {
+        jobPostingData.niceToHave = nonEmptyNiceToHave.join('\n• ');
+      }
+      
+      if (jobData.other) jobPostingData.other = jobData.other;
+9
       const response = await instance.post('/api/jobpostings', jobPostingData);
-
-      console.log('Job posting created successfully:', response.data);
 
       setSnackbarMessage('Job posted successfully!');
       setSnackbarSeverity('success');
       setOpenSnackbar(true);
+      setIsLoading(false);
 
-      // Navigate to job listings or dashboard after success
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/Home');
       }, 2000);
+
     } catch (error) {
-      console.error('Error creating job posting:', error);
-
-      let errorMessage = 'Failed to post job. Please try again.';
-
-      if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please login again.';
-        // Optionally redirect to login
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
-      } else if (error.response?.status === 400) {
-        errorMessage = error.response.data?.message || 'Invalid job posting data. Please check your inputs.';
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
+      console.error('Error posting job:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to post job. Please try again.';
       setSnackbarMessage(errorMessage);
       setSnackbarSeverity('error');
       setOpenSnackbar(true);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
-  const handleClear = () => {
-    setJobData({
-      title: '',
-      description: '',
-      location: '',
-      salary: '',
-      requirements: '',
-      status: 'Open',
-      employmentType: '',
-      experience: '',
-      category: '',
-      skills: [],
-    });
-    setErrors({});
-    setActiveStep(0);
-  };
-
-  const renderStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <StyledTextField
-                fullWidth
-                label="Job Title"
-                placeholder="e.g., Senior Software Engineer"
-                value={jobData.title}
-                onChange={handleInputChange('title')}
-                error={!!errors.title}
-                helperText={errors.title}
-                required
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <StyledTextField
-                fullWidth
-                label="Location"
-                placeholder="e.g., Remote, New York NY, or multiple locations..."
-                value={jobData.location}
-                onChange={handleInputChange('location')}
-                error={!!errors.location}
-                helperText={errors.location}
-                required
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <StyledTextField
-                fullWidth
-                label="Salary Range"
-                placeholder="e.g., $80,000 - $120,000"
-                value={jobData.salary}
-                onChange={handleInputChange('salary')}
-                error={!!errors.salary}
-                helperText={errors.salary}
-                required
-              />
-            </Grid>
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={8}
-                label="Job Description"
-                placeholder="Describe the role, responsibilities, and what the candidate will be doing..."
-                value={jobData.description}
-                onChange={handleInputChange('description')}
-                error={!!errors.description}
-                helperText={errors.description}
-                required
-              />
-          </Grid>
-
-
-
-
-        );
-
-      case 1:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <StyledTextField
-                fullWidth
-                multiline
-                rows={6}
-                label="Requirements"
-                placeholder="List the required qualifications, skills, and experience..."
-                value={jobData.requirements}
-                onChange={handleInputChange('requirements')}
-                error={!!errors.requirements}
-                helperText={errors.requirements}
-                required
-              />
-            </Grid>
-
-
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Required Skills (optional)
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                {commonSkills.map((skill) => (
-                  <Chip
-                    key={skill}
-                    label={skill}
-                    onClick={() => handleSkillAdd(skill)}
-                    variant={jobData.skills.includes(skill) ? 'filled' : 'outlined'}
-                    color={jobData.skills.includes(skill) ? 'primary' : 'default'}
-                    sx={{ m: 0.5, cursor: 'pointer' }}
-                  />
-                ))}
-              </Box>
-              {jobData.skills.length > 0 && (
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Selected Skills:
-                  </Typography>
-                  {jobData.skills.map((skill) => (
-                    <Chip
-                      key={skill}
-                      label={skill}
-                      onDelete={() => handleSkillRemove(skill)}
-                      color="primary"
-                      sx={{ m: 0.5 }}
-                    />
-                  ))}
-                </Box>
-              )}
-            </Grid>
-          </Grid>
-        );
-
-      case 2:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
-                Review Your Job Posting
-              </Typography>
-              <PreviewCard>
-                <Typography variant="h5" fontWeight="bold" gutterBottom>
-                  {jobData.title || 'Job Title'}
-                </Typography>
-
-                <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-                  <Chip
-                    icon={<LocationOn />}
-                    label={jobData.location || 'Location'}
-                    variant="outlined"
-                  />
-                  <Chip
-                    icon={<AttachMoney />}
-                    label={jobData.salary || 'Salary'}
-                    variant="outlined"
-                  />
-                  <Chip
-                    icon={<Work />}
-                    label={jobData.status || 'Open'}
-                    variant="outlined"
-                  />
-                </Box>
-
-                <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-                  Description
-                </Typography>
-                <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap' }}>
-                  {jobData.description || 'Job description will appear here...'}
-                </Typography>
-
-                <Typography variant="h6" gutterBottom>
-                  Requirements
-                </Typography>
-                <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap' }}>
-                  {jobData.requirements || 'Job requirements will appear here...'}
-                </Typography>
-
-                {jobData.skills.length > 0 && (
-                  <>
-                    <Typography variant="h6" gutterBottom>
-                      Required Skills
-                    </Typography>
-                    <Box sx={{ mb: 2 }}>
-                      {jobData.skills.map((skill) => (
-                        <Chip
-                          key={skill}
-                          label={skill}
-                          color="primary"
-                          sx={{ m: 0.5 }}
-                        />
-                      ))}
-                    </Box>
-                  </>
-                )}
-              </PreviewCard>
-            </Grid>
-          </Grid>
-        );
-
-      default:
-        return 'Unknown step';
-    }
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
   };
 
   return (
-    <PostJobContainer>
-      <Container maxWidth="lg">
-        <PostJobHeader>
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <IconButton
-                onClick={() => navigate('/dashboard')}
-                sx={{
-                  color: 'white',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.2)' }
+    <Page>
+      <Box sx={{ width: '90%', maxWidth: '1400px', margin: '0 auto', py: 5 }}>
+        {/* Header */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1, color: '#202124' }}>
+            Post a New Job
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#5f6368' }}>
+            Fill in the details below to create a job posting
+          </Typography>
+        </Box>
+
+        {/* Form */}
+        <Box sx={{ border: '1px solid #dadce0', borderRadius: 2, p: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Row 1: Title */}
+          <Box>
+            <TextField
+              fullWidth
+              label="Job Title *"
+              value={jobData.title}
+              onChange={handleInputChange('title')}
+              error={!!errors.title}
+              helperText={errors.title}
+              placeholder="e.g. Senior Software Engineer"
+            />
+          </Box>
+
+          {/* Row 2: Location */}
+          <Box>
+            <TextField
+              fullWidth
+              label="Location *"
+              value={jobData.location}
+              onChange={handleInputChange('location')}
+              error={!!errors.location}
+              helperText={errors.location}
+              placeholder="e.g. San Francisco, CA or Remote"
+            />
+          </Box>
+
+          {/* Row 3: Description */}
+          <Box>
+            <TextField
+              fullWidth
+              multiline
+              rows={8}
+              label="Job Description *"
+              value={jobData.description}
+              onChange={handleInputChange('description')}
+              error={!!errors.description}
+              helperText={errors.description}
+              placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
+            />
+          </Box>
+
+          {/* Row 4: Requirements - Collapsible */}
+          <Box sx={{ border: '1px solid #dadce0', borderRadius: 1 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                p: 2,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: '#f8f9fa' }
+              }}
+              onClick={() => toggleSection('requirements')}
+            >
+              <Typography sx={{ fontWeight: 500, color: '#202124' }}>
+                Requirements *
+              </Typography>
+              <IconButton 
+                size="small"
+                sx={{ 
+                  transform: expandedSections.requirements ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s'
                 }}
               >
-                <ArrowBack />
+                <ExpandMore />
               </IconButton>
-              <Typography variant="h4" component="h1" fontWeight="bold">
-                Post a New Job
-              </Typography>
             </Box>
-            <Typography variant="h6" opacity={0.9}>
-              Create and publish job opportunities for talented candidates
-            </Typography>
-          </Box>
-        </PostJobHeader>
-
-        {/* Stepper */}
-        <FormCard>
-          <CardContent>
-            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-
-            {isLoading && (
-              <LinearProgress
-                sx={{
-                  mb: 3,
-                  backgroundColor: 'rgba(44, 103, 242, 0.1)',
-                  '& .MuiLinearProgress-bar': {
-                    backgroundColor: '#2c67f2'
-                  }
-                }}
-              />
-            )}
-
-            {/* Step Content */}
-            {renderStepContent(activeStep)}
-
-            {/* Navigation Buttons */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-              <Box sx={{ display: 'flex', gap: 2 }}>
+            <Collapse in={expandedSections.requirements}>
+              <Box sx={{ p: 2, pt: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {jobData.requirements.map((req, index) => (
+                  <Box key={index} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                    <TextField
+                      fullWidth
+                      value={req}
+                      onChange={handleArrayFieldChange('requirements', index)}
+                      placeholder={`Requirement ${index + 1}...`}
+                      multiline
+                      maxRows={3}
+                    />
+                    <IconButton
+                      onClick={() => removeArrayField('requirements', index)}
+                      disabled={jobData.requirements.length === 1}
+                      sx={{ mt: 0.5 }}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                ))}
                 <Button
-                  onClick={handleClear}
-                  startIcon={<Clear />}
-                  sx={{ color: 'text.secondary' }}
+                  startIcon={<Add />}
+                  onClick={() => addArrayField('requirements')}
+                  sx={{ 
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    color: '#4285F4'
+                  }}
                 >
-                  Clear All
+                  Add Requirement
                 </Button>
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  disabled={activeStep === 0}
-                  onClick={handleBack}
-                  sx={{ color: 'text.secondary' }}
-                >
-                  Back
-                </Button>
-
-                {activeStep === steps.length - 1 ? (
-                  <GradientButton
-                    onClick={handleSubmit}
-                    startIcon={<Publish />}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Publishing...' : 'Publish Job'}
-                  </GradientButton>
-                ) : (
-                  <GradientButton onClick={handleNext}>
-                    Next
-                  </GradientButton>
+                {errors.requirements && (
+                  <Typography sx={{ color: '#d32f2f', fontSize: '0.75rem', mt: 0.5 }}>
+                    {errors.requirements}
+                  </Typography>
                 )}
               </Box>
-            </Box>
-          </CardContent>
-        </FormCard>
+            </Collapse>
+          </Box>
 
-        {/* Snackbar */}
-        <Snackbar
-          open={openSnackbar}
-          autoHideDuration={6000}
-          onClose={() => setOpenSnackbar(false)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={() => setOpenSnackbar(false)}
-            severity={snackbarSeverity}
-            sx={{ width: '100%' }}
-          >
-            {snackbarMessage}
-          </Alert>
-        </Snackbar>
-      </Container>
-    </PostJobContainer>
+          {/* Row 5: Responsibilities - Collapsible */}
+          <Box sx={{ border: '1px solid #dadce0', borderRadius: 1 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                p: 2,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: '#f8f9fa' }
+              }}
+              onClick={() => toggleSection('responsibilities')}
+            >
+              <Typography sx={{ fontWeight: 500, color: '#202124' }}>
+                Responsibilities (Optional)
+              </Typography>
+              <IconButton 
+                size="small"
+                sx={{ 
+                  transform: expandedSections.responsibilities ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s'
+                }}
+              >
+                <ExpandMore />
+              </IconButton>
+            </Box>
+            <Collapse in={expandedSections.responsibilities}>
+              <Box sx={{ p: 2, pt: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {jobData.responsibilities.map((resp, index) => (
+                  <Box key={index} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                    <TextField
+                      fullWidth
+                      value={resp}
+                      onChange={handleArrayFieldChange('responsibilities', index)}
+                      placeholder={`Responsibility ${index + 1}...`}
+                      multiline
+                      maxRows={3}
+                    />
+                    <IconButton
+                      onClick={() => removeArrayField('responsibilities', index)}
+                      disabled={jobData.responsibilities.length === 1}
+                      sx={{ mt: 0.5 }}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                ))}
+                <Button
+                  startIcon={<Add />}
+                  onClick={() => addArrayField('responsibilities')}
+                  sx={{ 
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    color: '#4285F4'
+                  }}
+                >
+                  Add Responsibility
+                </Button>
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* Row 6: Nice to Have - Collapsible */}
+          <Box sx={{ border: '1px solid #dadce0', borderRadius: 1 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                p: 2,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: '#f8f9fa' }
+              }}
+              onClick={() => toggleSection('niceToHave')}
+            >
+              <Typography sx={{ fontWeight: 500, color: '#202124' }}>
+                Nice to Have (Optional)
+              </Typography>
+              <IconButton 
+                size="small"
+                sx={{ 
+                  transform: expandedSections.niceToHave ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s'
+                }}
+              >
+                <ExpandMore />
+              </IconButton>
+            </Box>
+            <Collapse in={expandedSections.niceToHave}>
+              <Box sx={{ p: 2, pt: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {jobData.niceToHave.map((item, index) => (
+                  <Box key={index} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                    <TextField
+                      fullWidth
+                      value={item}
+                      onChange={handleArrayFieldChange('niceToHave', index)}
+                      placeholder={`Nice to have ${index + 1}...`}
+                      multiline
+                      maxRows={3}
+                    />
+                    <IconButton
+                      onClick={() => removeArrayField('niceToHave', index)}
+                      disabled={jobData.niceToHave.length === 1}
+                      sx={{ mt: 0.5 }}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                ))}
+                <Button
+                  startIcon={<Add />}
+                  onClick={() => addArrayField('niceToHave')}
+                  sx={{ 
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    color: '#4285F4'
+                  }}
+                >
+                  Add Nice to Have
+                </Button>
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* Row 7: Other Information - Collapsible */}
+          <Box sx={{ border: '1px solid #dadce0', borderRadius: 1 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                p: 2,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: '#f8f9fa' }
+              }}
+              onClick={() => toggleSection('other')}
+            >
+              <Typography sx={{ fontWeight: 500, color: '#202124' }}>
+                Other Information (Optional)
+              </Typography>
+              <IconButton 
+                size="small"
+                sx={{ 
+                  transform: expandedSections.other ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s'
+                }}
+              >
+                <ExpandMore />
+              </IconButton>
+            </Box>
+            <Collapse in={expandedSections.other}>
+              <Box sx={{ p: 2, pt: 0 }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={jobData.other}
+                  onChange={handleInputChange('other')}
+                  placeholder="Any additional information about the role or company..."
+                />
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* Row 8: Job Details Dropdowns - Collapsible */}
+          <Box sx={{ border: '1px solid #dadce0', borderRadius: 1 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                p: 2,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: '#f8f9fa' }
+              }}
+              onClick={() => toggleSection('jobDetails')}
+            >
+              <Typography sx={{ fontWeight: 500, color: '#202124' }}>
+                Job Details (Optional)
+              </Typography>
+              <IconButton 
+                size="small"
+                sx={{ 
+                  transform: expandedSections.jobDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s'
+                }}
+              >
+                <ExpandMore />
+              </IconButton>
+            </Box>
+            <Collapse in={expandedSections.jobDetails}>
+              <Box sx={{ p: 2, pt: 0, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 30%', minWidth: '250px' }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Job Type</InputLabel>
+                    <Select
+                      value={jobData.jobType}
+                      onChange={handleInputChange('jobType')}
+                      label="Job Type"
+                    >
+                      <MenuItem value="">Not specified</MenuItem>
+                      <MenuItem value="FULL_TIME">Full-time</MenuItem>
+                      <MenuItem value="PART_TIME">Part-time</MenuItem>
+                      <MenuItem value="CONTRACT">Contract</MenuItem>
+                      <MenuItem value="TEMPORARY">Temporary</MenuItem>
+                      <MenuItem value="INTERN">Intern</MenuItem>
+                      <MenuItem value="FREELANCE">Freelance</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Box sx={{ flex: '1 1 30%', minWidth: '250px' }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Experience Level</InputLabel>
+                    <Select
+                      value={jobData.experienceLevel}
+                      onChange={handleInputChange('experienceLevel')}
+                      label="Experience Level"
+                    >
+                      <MenuItem value="">Not specified</MenuItem>
+                      <MenuItem value="INTERNSHIP">Internship</MenuItem>
+                      <MenuItem value="ENTRY_LEVEL">Entry Level</MenuItem>
+                      <MenuItem value="ASSOCIATE">Associate</MenuItem>
+                      <MenuItem value="MID_SENIOR_LEVEL">Mid-Senior Level</MenuItem>
+                      <MenuItem value="DIRECTOR">Director</MenuItem>
+                      <MenuItem value="EXECUTIVE">Executive</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Box sx={{ flex: '1 1 30%', minWidth: '250px' }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Workplace Type</InputLabel>
+                    <Select
+                      value={jobData.workplaceType}
+                      onChange={handleInputChange('workplaceType')}
+                      label="Workplace Type"
+                    >
+                      <MenuItem value="">Not specified</MenuItem>
+                      <MenuItem value="ONSITE">Onsite</MenuItem>
+                      <MenuItem value="HYBRID">Hybrid</MenuItem>
+                      <MenuItem value="REMOTE">Remote</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* Row 9: Salary - Collapsible */}
+          <Box sx={{ border: '1px solid #dadce0', borderRadius: 1 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                p: 2,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: '#f8f9fa' }
+              }}
+              onClick={() => toggleSection('salary')}
+            >
+              <Typography sx={{ fontWeight: 500, color: '#202124' }}>
+                Salary Range (Optional)
+              </Typography>
+              <IconButton 
+                size="small"
+                sx={{ 
+                  transform: expandedSections.salary ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s'
+                }}
+              >
+                <ExpandMore />
+              </IconButton>
+            </Box>
+            <Collapse in={expandedSections.salary}>
+              <Box sx={{ p: 2, pt: 0, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 30%', minWidth: '200px' }}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Minimum Salary"
+                    value={jobData.salaryMin}
+                    onChange={handleInputChange('salaryMin')}
+                    error={!!errors.salaryMin}
+                    helperText={errors.salaryMin}
+                    placeholder="50000"
+                  />
+                </Box>
+
+                <Box sx={{ flex: '1 1 30%', minWidth: '200px' }}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Maximum Salary"
+                    value={jobData.salaryMax}
+                    onChange={handleInputChange('salaryMax')}
+                    error={!!errors.salaryMax}
+                    helperText={errors.salaryMax}
+                    placeholder="100000"
+                  />
+                </Box>
+
+                <Box sx={{ flex: '1 1 30%', minWidth: '200px' }}>
+                  <TextField
+                    fullWidth
+                    label="Currency"
+                    value={jobData.currency}
+                    onChange={handleInputChange('currency')}
+                    error={!!errors.currency}
+                    helperText={errors.currency}
+                    placeholder="USD"
+                  />
+                </Box>
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(-1)}
+              disabled={isLoading}
+              sx={{ 
+                textTransform: 'none',
+                borderColor: '#dadce0',
+                color: '#5f6368',
+                px: 4,
+                py: 1
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleSubmit}
+              disabled={isLoading}
+              sx={{ 
+                textTransform: 'none',
+                borderColor: '#4285F4',
+                color: '#4285F4',
+                px: 4,
+                py: 1,
+                fontWeight: 600
+              }}
+            >
+              {isLoading ? 'Posting...' : 'Post Job'}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Page>
   );
 };
 

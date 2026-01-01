@@ -249,7 +249,7 @@ const DashboardContainer = styled(Box)(({ theme }) => ({
 
   // Navigation functions for stats
   const handleJobsClick = () => {
-    navigate('/JobSearch');
+    navigate('/Home');
   };
 
   const handleApplicationsClick = () => {
@@ -288,7 +288,7 @@ const DashboardContainer = styled(Box)(({ theme }) => ({
 
   // Quick Action handlers
   const handleSearchJobsClick = () => {
-    navigate('/JobSearch');
+    navigate('/Home');
     handleQuickActionClose();
   };
 

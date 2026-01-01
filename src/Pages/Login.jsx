@@ -24,6 +24,13 @@ import {
 import googleLogo from '../assets/google.png';
 import { styled } from '@mui/material/styles';
 import instance from '../Service/AxiosOrder';
+import { GoogleLogin } from '@react-oauth/google';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
 
 // Styled components
 const GradientBackground = styled(Box)(({ theme }) => ({
@@ -141,6 +148,8 @@ const Login = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [googleDialogOpen, setGoogleDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(''); // Optional role for first-time signup
 
   const handleSignUpClick = () => {
     navigate('/register');
@@ -243,6 +252,47 @@ const Login = () => {
     }
 
     login(); // Use your existing login function
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    const credential = credentialResponse?.credential;
+    if (!credential) {
+      setError('Google sign-in failed: missing credential');
+      setOpenSnackbar(true);
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const payload = { idToken: credential, role: selectedRole || null };
+      const res = await instance.post('/api/users/oauth2/google', payload);
+      const data = res?.data || {};
+      const token = data?.token || data?.jwt;
+      const id = data?.id || data?.userId || data?.user?.id;
+      const role = data?.role || data?.user?.role;
+      const name = data?.name || data?.user?.name;
+      const emailFromRes = data?.email || data?.user?.email;
+
+      if (token) localStorage.setItem('token', token);
+      if (id) localStorage.setItem('user', String(id));
+      if (role) localStorage.setItem('role', String(role));
+      if (name) localStorage.setItem('name', String(name));
+      if (emailFromRes) localStorage.setItem('email', String(emailFromRes));
+
+      setSuccess('Signed in with Google. Redirecting...');
+      setOpenSnackbar(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 600);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Google sign-in failed';
+      setError(msg);
+      setOpenSnackbar(true);
+    } finally {
+      setIsLoading(false);
+      setGoogleDialogOpen(false);
+    }
   };
 
   return (
@@ -358,6 +408,7 @@ const Login = () => {
                 {isLoading ? 'Signing In...' : 'Sign In'}
               </GradientButton>
 
+              {/* Trigger: similar size to the login button */}
               <GoogleButton
                 type="button"
                 fullWidth
@@ -367,15 +418,58 @@ const Login = () => {
                     component="img"
                     src={googleLogo}
                     alt="Google"
-                    sx={{ width: 20, height: 20 }}
+                    sx={{ width: 25, height: 25 }}
                     marginRight={'10px'}
                   />
                 }
-                onClick={() => { /* No-op for now */ }}
+                onClick={() => setGoogleDialogOpen(true)}
                 sx={{ mb: 2 }}
               >
-                Log in with Google
+                Continue with Google
               </GoogleButton>
+
+              {/* Role selection + Google continue popup */}
+              <Dialog open={googleDialogOpen} onClose={() => setGoogleDialogOpen(false)} fullWidth maxWidth="xs">
+                <DialogTitle>Select role (optional)</DialogTitle>
+                <DialogContent>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1, mb: 2 }}>
+                    <Button
+                      variant={selectedRole === 'JobSeeker' ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedRole(selectedRole === 'JobSeeker' ? '' : 'JobSeeker')}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Job Seeker
+                    </Button>
+                    <Button
+                      variant={selectedRole === 'Employer' ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedRole(selectedRole === 'Employer' ? '' : 'Employer')}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Employer
+                    </Button>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    If you already have an account, you can continue without selecting a role.
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => {
+                        setError('Google sign-in was cancelled or failed');
+                        setOpenSnackbar(true);
+                      }}
+                      theme="outline"
+                      size="large"
+                      logo_alignment="left"
+                      shape="rectangular"
+                      text="continue_with"
+                    />
+                  </Box>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setGoogleDialogOpen(false)}>Cancel</Button>
+                </DialogActions>
+              </Dialog>
 
               <Box sx={{ textAlign: 'center' }}>
                 <Link

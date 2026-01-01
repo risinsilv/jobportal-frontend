@@ -1,4 +1,3 @@
-import JobSearch from "../Pages/JobSearch/JobSearch"
 import UserProfile from "../Pages/UserProfile/UserProfile";
 import DashBoard from "../Pages/DashBoard/DashBoard"
 import JobSeekerResume from "../Pages/JobSeekerResume/JobSeekerResume";
@@ -8,6 +7,7 @@ import Candidate from "../Pages/Candidate/Candidate";
 import Register from "../Pages/Register/Register";
 // Removed trainer course features
 import Home from "../Pages/Home/Home";
+import JobDetails from "../Pages/JobDetails/JobDetails";
 import { element } from "prop-types";
 
 const route = [
@@ -15,12 +15,6 @@ const route = [
         name:'Home',
         path:'/Home',
         element:<Home/>
-    },
-    {
-        name: 'JobSearch',
-        path:'/JobSearch',
-        element:<JobSearch/>
-
     },
     {
         name:'UserProfile',
@@ -52,6 +46,11 @@ const route = [
         name: 'Register',
         path:'/register',
         element:<Register/>
+    },
+    {
+        name: 'JobDetails',
+        path:'/jobs/:jobId/apply',
+        element:<JobDetails/>
     },
 
     

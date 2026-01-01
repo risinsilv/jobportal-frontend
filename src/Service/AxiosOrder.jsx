@@ -10,7 +10,10 @@ const instance = axios.create({
 instance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        if (token) {
+        // Do not attach Authorization for public job search endpoint
+        const url = config?.url || '';
+        const isPublicSearch = url.includes('/api/job-postings/search') || url.includes('/api/jobpostings/search');
+        if (token && !isPublicSearch) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;

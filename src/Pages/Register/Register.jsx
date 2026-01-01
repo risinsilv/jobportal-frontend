@@ -32,6 +32,7 @@ import {
 import { styled } from '@mui/material/styles';
 import googleLogo from '../../assets/google.png';
 import instance from '../../Service/AxiosOrder';
+import { GoogleLogin } from '@react-oauth/google';
 
 // Logo styling
 const LogoText = styled(Typography)(({ theme }) => ({
@@ -647,25 +648,6 @@ const Register = () => {
                   Next
                 </GradientButton>
 
-                <GoogleButton
-                  type="button"
-                  fullWidth
-                  variant="outlined"
-                  startIcon={
-                    <Box
-                      component="img"
-                      src={googleLogo}
-                      alt="Google"
-                      sx={{ width: 20, height: 20 }}
-                      marginRight={'10px'}
-                    />
-                  }
-                  onClick={() => { /* No-op for now */ }}
-                  sx={{ mb: 2 }}
-                >
-                  Sign up with Google
-                </GoogleButton>
-
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="text.secondary">
                     Already have an account?{' '}
@@ -820,6 +802,65 @@ const Register = () => {
                       </CardContent>
                     </CardActionArea>
                   </RoleCard>
+                </Box>
+
+                {/* Google sign-up with role (required for first-time creation) */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      if (!selectedRole) {
+                        setError('Please select a role before continuing with Google');
+                        setOpenSnackbar(true);
+                        return;
+                      }
+                      const credential = credentialResponse?.credential;
+                      if (!credential) {
+                        setError('Google sign-up failed: missing credential');
+                        setOpenSnackbar(true);
+                        return;
+                      }
+                      setIsLoading(true);
+                      setError('');
+                      setSuccess('');
+                      try {
+                        const payload = { idToken: credential, role: selectedRole };
+                        const res = await instance.post('/api/users/oauth2/google', payload);
+                        const data = res?.data || {};
+                        const token = data?.token || data?.jwt;
+                        const id = data?.id || data?.userId || data?.user?.id;
+                        const roleFromRes = data?.role || data?.user?.role;
+                        const nameFromRes = data?.name || data?.user?.name;
+                        const emailFromRes = data?.email || data?.user?.email;
+
+                        if (token) localStorage.setItem('token', token);
+                        if (id) localStorage.setItem('user', String(id));
+                        if (roleFromRes) localStorage.setItem('role', String(roleFromRes));
+                        if (nameFromRes) localStorage.setItem('name', String(nameFromRes));
+                        if (emailFromRes) localStorage.setItem('email', String(emailFromRes));
+
+                        setSuccess('Signed up with Google. Redirecting...');
+                        setOpenSnackbar(true);
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 600);
+                      } catch (err) {
+                        const msg = err?.response?.data?.message || err?.message || 'Google sign-up failed';
+                        setError(msg);
+                        setOpenSnackbar(true);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    onError={() => {
+                      setError('Google sign-up was cancelled or failed');
+                      setOpenSnackbar(true);
+                    }}
+                    theme="outline"
+                    size="large"
+                    logo_alignment="left"
+                    shape="rectangular"
+                    text="continue_with"
+                  />
                 </Box>
 
                 {/* Optional: Skip OTP toggle */}
